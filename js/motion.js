@@ -59,12 +59,12 @@
       });
     },
 
-    // screen 2: numbers 1 top, 2 right, 3 bottom, 4 left - each glides in from its own side, one after another;
+    // screen 2: numbers 1 left, 2 top, 3 right, 4 bottom - each glides in from its own side, one after another;
     // onLand(i) fires as number i settles (its side then gives the voice-sync grow)
     sideNums(onLand) {
       const els = ['.tag.snum.n1', '.tag.snum.n2', '.tag.snum.n3', '.tag.snum.n4'].map((s) => $(s)[0]).filter(Boolean);
       if (!G || !els.length) { els.forEach((e, i) => onLand && onLand(i)); return; }
-      const from = [{ y: -46 }, { x: 46 }, { y: 46 }, { x: -46 }];
+      const from = [{ x: -46 }, { y: -46 }, { x: 46 }, { y: 46 }];
       add(() => {
         centred(els);
         const tl = G.timeline({ delay: 0.45 });

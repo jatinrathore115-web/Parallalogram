@@ -7,6 +7,8 @@
 //          glow = sides drawn bolder while the line is spoken, e.g. ['AB', 'CD']; glowAt: 'word' = wait for that word;
 //          pulse: 1 + pulseAt = the shape zooms once on that word; growAt = the shape comes forward on that word;
 //          chips = cards shown with the line; m = Swiftee's expression (default talking; reactions in CONFIG.swiftee)
+//          holdM: 1 = Swiftee keeps the m pose while she speaks (e.g. waves hello) instead of the talking loop
+//   skin:  'intro' = the opening look (storyboard pages 1-2): white bubble, light-blue shape with a thin blue outline
 //   task:  dragB  = drag B until BC ∥ AD (the trapezium becomes a parallelogram; snaps when close)
 //          measure (+auto) = Swiftee walks every side with her tape measure
 //          tapEq  = tap the corner whose angle equals ∠ref (want = the right corner, wrong = tip for a wrong tap)
@@ -40,8 +42,9 @@ const LESSON = {
   steps: [
     // ---------- Part 1 · quadrilateral -> trapezium -> parallelogram (pages 1-11) ----------
     // the outline draws itself while Swiftee says the line and closes on her last word; the plain shape, as on page 1
-    { pdf: 1, id: 'intro', build: 1, lines: [{ m: 'waving', t: 'We learnt about quadrilaterals\nearlier.' }], f: { noLetters: 1, noDots: 1 } },
-    { pdf: 2, id: 'quadSides', sideNums: 1, lines: [{ m: 'happy', t: 'Any polygon with 4 sides\nis called a quadrilateral.' }], f: { noLetters: 1, noDots: 1 } },
+    // (she waves hello as she speaks)
+    { pdf: 1, id: 'intro', build: 1, skin: 'intro', lines: [{ m: 'waving', holdM: 1, t: 'We learnt about quadrilaterals\nearlier.' }], f: { noLetters: 1, noDots: 1 } },
+    { pdf: 2, id: 'quadSides', sideNums: 1, skin: 'intro', lines: [{ m: 'happy', t: 'Any polygon with 4 sides is\ncalled a quadrilateral.' }], f: { noLetters: 1, noDots: 1 } },
     { pdf: 3, id: 'special', assemble: 1, voiceDelay: 3000, lines: [{ m: 'happy', t: 'This is a special type\nof quadrilateral called\nTrapezium.', growAt: 'special', chips: [{ t: 'Trapezium', k: 'name' }] }], f: { noLetters: 1 } },
     { pdf: 4, id: 'onePair', lines: [{ t: 'A trapezium has one pair of\nopposite sides parallel.', chips: [{ t: 'Trapezium', k: 'name' }] }], f: { noLetters: 1 } },
     Object.assign({ pdf: '5-6', id: 'askPar', lines: [{ m: 'curious', t: 'Which pair of sides are\nparallel to each other?' }],

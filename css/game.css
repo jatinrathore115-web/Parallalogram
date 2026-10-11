@@ -360,3 +360,16 @@ a{color:#123b63}a:hover{color:#0b2742}
 .tile.lift{opacity:.35}
 .tile.ghost{position:absolute;transform:translate(-50%,-50%) scale(1.08) rotate(-2deg);pointer-events:none;z-index:20;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 26px rgba(18,59,99,.28)}
 @media (prefers-reduced-motion: reduce){.hseg,.supp-copy.sA,.supp-copy.sB,.go>.opt,.go .blank-grp,.go .tile,.blank.act{animation:none}}
+/* Opening look, screens 1-2 (skin: 'intro', storyboard pages 1-2): a clean white bubble with roomy, centred text, and the plain shape
+   in light blue with a thin blue outline. The pen, the closing glow and the fill all share that blue; on Next the
+   colours ease into the lesson's pink (transitions on .edge and .shape-fill) */
+.stage.skin-intro .bubble,.stage.scene.skin-intro .bubble.manual{max-width:500px}
+.stage.skin-intro .bubble{background:#fff;border:none;border-radius:22px;padding:20px 28px 21px;box-shadow:0 10px 26px rgba(18,59,99,.16),0 2px 4px rgba(18,59,99,.06)}
+.stage.skin-intro .bubble-text{color:#16263a}
+.stage.skin-intro .bubble .bubble-tail{margin-top:-2px;filter:drop-shadow(0 5px 4px rgba(18,59,99,.08))}
+.stage.skin-intro .bubble-tail path{fill:#fff;stroke:none}
+.stage.skin-intro .shape-fill{fill:rgba(158,196,234,.92)}
+.stage.skin-intro .edge{stroke-width:3.5px}
+.stage.skin-intro .trace{stroke:#2456d6;stroke-width:4.5px;filter:drop-shadow(0 0 4px rgba(36,86,214,.4))}
+.stage.skin-intro .outline-settle{stroke:#2456d6;stroke-width:4px;filter:drop-shadow(0 0 7px rgba(36,86,214,.45))}
+.shape-fill{transition:fill .45s ease}

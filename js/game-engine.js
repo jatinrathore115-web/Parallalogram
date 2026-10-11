@@ -361,7 +361,9 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     const mouth = (on) => {
       if (!live() || on === mouthOn) return;
       mouthOn = on;
-      if (this.sw) this.sw.talk(on, on ? null : (L.m || this.restPose()));
+      if (!this.sw) return;
+      if (L.holdM && L.m) { if (on) this.pose(L.m); return; } // keeps the line's pose (e.g. waving) instead of the beak loop
+      this.sw.talk(on, on ? null : (L.m || this.restPose()));
     };
     const finish = () => {
       if (!live() || fin || !rDone || !sDone) return;
@@ -928,7 +930,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       this.buildArmed = true; // say() starts the pen the moment the voice starts (begin)
       this.tm(() => { if (this.buildArmed) this.runBuild(); }, CONFIG.build.delayMs + 2500 + (st.voiceDelay || 0));
     }
-    if (st.sideNums) Motion.sideNums((i) => this.emphasize([['AB', 'BC', 'CD', 'DA'][i]]));
+    if (st.sideNums) Motion.sideNums((i) => this.emphasize([['DA', 'AB', 'BC', 'CD'][i]]));
     if (st.letterIn) Motion.fadeOut('.tag.snum, .tag.vlab'); // numbers and old letters leave softly; letters return on cue
     if (st.assemble) {
       const P = this.state.P;
@@ -1589,7 +1591,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     g.xCD = be('CD', D, C);
     // edges
     // shape colours (reference): hot-pink outline, soft pink-lilac fill; highlight colours unchanged
-    const NAVY = '#e8287a', OR = '#f08a24', PU = '#8e44d6';
+    const NAVY = st.skin === 'intro' ? '#2456d6' : '#e8287a', OR = '#f08a24', PU = '#8e44d6';
     const baseCol = (k) => (st.id === 'bases' && s.tap[k] ? OR : NAVY);
     const legCol = (k) => ((st.id === 'legs' && s.tap[k]) || f.legsPurple ? PU : NAVY);
     // flash (auto extend), wiggle (wrong-way drag), emph (named in the voice-over)
@@ -1853,14 +1855,15 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       const E = { AB: [A, B], BC: [B, C], CD: [D, C], DA: [D, A] };
       Object.keys(fig.sides).forEach((k) => tags.push(side(E[k][0], E[k][1], fig.sides[k], 'mtag fig' + (fig.sides[k].indexOf('?') >= 0 ? ' q' : ''), true)));
     }
-    // sideNums (screen 2): the four sides numbered 1 top, 2 right, 3 bottom, 4 left - each number flies in from its
+    // sideNums (screen 2): the four sides numbered clockwise from the left (storyboard page 2): 1 left, 2 top, 3 right,
+    // 4 bottom - each number flies in from its
     // own side's direction, one after another (CSS .snum: ease-out, slight overshoot, 90% -> 100% scale)
     {
       const on = !!(st.sideNums || st.letterIn), gone = ''; // kept on screen 3 so they can fade out (Motion.fadeOut)
-      tags.push(side(A, B, '1', 'snum n1 from-top' + gone, on));
-      tags.push(side(B, C, '2', 'snum n2 from-right' + gone, on));
-      tags.push(side(D, C, '3', 'snum n3 from-bottom' + gone, on));
-      tags.push(side(D, A, '4', 'snum n4 from-left' + gone, on));
+      tags.push(side(D, A, '1', 'snum n1 from-left' + gone, on));
+      tags.push(side(A, B, '2', 'snum n2 from-top' + gone, on));
+      tags.push(side(B, C, '3', 'snum n3 from-right' + gone, on));
+      tags.push(side(D, C, '4', 'snum n4 from-bottom' + gone, on));
     }
     return { g: g, tags: tags, V: V };
   }
@@ -1999,7 +2002,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       nextCls: CONFIG.flow.showNext && st.autoAdvance == null ? (s.done && !s.talking ? 'ready' : '') : 'auto', // screens move on by themselves
       nextLabel: isLastCfu ? 'Finish' : 'Next',
       // spotlight: the board (shape + its labels) glides to centre stage and grows; Swiftee moves right; no bubble
-      sceneCls: scene ? 'scene' : '',
+      sceneCls: (scene ? 'scene' : '') + (st.skin ? ' skin-' + st.skin : ''), // skin: a screen's own look (css/game.css)
       boardTf: scene ? 'translate(' + CONFIG.scene.boardX + 'px, ' + (st.boardShiftY || 0) + 'px)' : spot ? tf(CONFIG.spotlight) : (st.layout === 'focus' && s.centered ? tf(CONFIG.focus) : (st.layout === 'top' ? tf(CONFIG.topLayout) : (st.boardShift || st.boardShiftY ? 'translate(' + (st.boardShift || 0) + 'px, ' + (st.boardShiftY || 0) + 'px)' : 'none'))),
       boardCls: fadeV + (st.assemble ? ' asm' : ''), // fade class + assemble (screen 4): the four sides fly in and form the shape - all in CSS (.asm)
       spotFill: spot ? 'spot' : '', // (screen 1 build: Motion hides the fill and fades it in last)
