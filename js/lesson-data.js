@@ -6,14 +6,16 @@
 //          keep: 1 + s = voice only, the bubble keeps the previous line;
 //          glow = sides drawn bolder while the line is spoken, e.g. ['AB', 'CD']; glowAt: 'word' = wait for that word;
 //          pulse: 1 + pulseAt = the shape zooms once on that word; growAt = the shape comes forward on that word;
+//          cues = board moments on a spoken word: [{ at: 'word', glow: [sides] | null, hi: card text, chip, pulse, ms }];
 //          chips = cards shown with the line; m = Swiftee's expression (default talking; reactions in CONFIG.swiftee)
 //          holdM: 1 = Swiftee keeps the m pose while she speaks (e.g. waves hello) instead of the talking loop
-//   skin:  'intro' = the opening look (storyboard pages 1-2): white bubble, light-blue shape with a thin blue outline
+//   skin:  'intro' = the opening look (storyboard pages 1-8): white bubble, light-blue shape with a thin blue outline
 //   task:  dragB  = drag B until BC ∥ AD (the trapezium becomes a parallelogram; snaps when close)
 //          measure (+auto) = Swiftee walks every side with her tape measure
 //          tapEq  = tap the corner whose angle equals ∠ref (want = the right corner, wrong = tip for a wrong tap)
 //          connect = draw both diagonals: drag (or tap, tap) from a corner to the opposite corner
-//   opts:  answer buttons (ok = right; fb = tip for a wrong one). multi: 1 = select every right answer
+//   opts:  answer buttons (ok = right; fb = tip for a wrong one; soloOk: 1 = once right, only the right answer stays,
+//          centred; okGlow: [[sides], ...] = side pairs pulse in turn after it; calmOk: 1 = no confetti). multi: 1 = select every right answer
 //          (req: false = right but not needed to finish). grid: 1 = the four-shape picture grid
 //   fill:  blanks to fill with number tiles: blanks [{ id, pre, post, ans }], tiles [...] (drag a tile onto a blank,
 //          or tap a tile to fill the highlighted blank). match: 1 = each tile once, blanks checked as pairs (pairs)
@@ -45,26 +47,36 @@ const LESSON = {
     // (she waves hello as she speaks)
     { pdf: 1, id: 'intro', build: 1, skin: 'intro', lines: [{ m: 'waving', holdM: 1, t: 'We learnt about quadrilaterals\nearlier.' }], f: { noLetters: 1, noDots: 1 } },
     { pdf: 2, id: 'quadSides', sideNums: 1, skin: 'intro', lines: [{ m: 'happy', t: 'Any polygon with 4 sides is\ncalled a quadrilateral.' }], f: { noLetters: 1, noDots: 1 } },
-    { pdf: 3, id: 'special', assemble: 1, voiceDelay: 3000, lines: [{ m: 'happy', t: 'This is a special type\nof quadrilateral called\nTrapezium.', growAt: 'special', chips: [{ t: 'Trapezium', k: 'name' }] }], f: { noLetters: 1 } },
-    { pdf: 4, id: 'onePair', lines: [{ t: 'A trapezium has one pair of\nopposite sides parallel.', chips: [{ t: 'Trapezium', k: 'name' }] }], f: { noLetters: 1 } },
-    Object.assign({ pdf: '5-6', id: 'askPar', lines: [{ m: 'curious', t: 'Which pair of sides are\nparallel to each other?' }],
-      ok: "That's correct! AB ∥ CD.", okChips: [{ t: 'AB ∥ CD', k: 'white' }], okF: { par: 1 },
+    { pdf: 3, id: 'special', assemble: 1, voiceDelay: 3000, skin: 'intro', lines: [{ m: 'happy', t: 'This is a special type of\nquadrilateral called Trapezium.', growAt: 'special', chips: [{ t: 'Trapezium', k: 'name' }] }], f: { noLetters: 1, noDots: 1 } },
+    { pdf: 4, id: 'onePair', skin: 'intro', lines: [{ t: 'A trapezium has one pair of\nopposite sides parallel.', chips: [{ t: 'Trapezium', k: 'name' }] }], f: { noLetters: 1, noDots: 1 } },
+    Object.assign({ pdf: '5-6', id: 'askPar', skin: 'intro', lines: [{ m: 'curious', t: 'Which pair of sides are\nparallel to each other?' }],
+      // right answer: AD ∥ BC folds away and AB ∥ CD settles alone in the centre, green (storyboard page 6)
+      ok: "That's correct! AB ∥ CD.", soloOk: 1, okF: { par: 1 }, f: { noDots: 1 },
       opts: [
         { id: 'AB', t: 'AB ∥ CD', ok: true },
         { id: 'AD', t: 'AD ∥ BC', fb: 'Look again. AD and BC lean towards each other, so they would meet if we made them longer.' }
       ] }, PRACTICE),
-    { pdf: 7, id: 'whatIf', lines: [{ m: 'thinking', t: 'What if we made the other\npair of opposite sides\nparallel too?', glow: ['DA', 'BC'] }], f: { par: 1 } },
+    { pdf: 7, id: 'whatIf', skin: 'intro', lines: [{ m: 'thinking', t: 'What if we made the other pair\nof opposite sides parallel too?', glow: ['DA', 'BC'] }], f: { par: 1, noDots: 1 } },
     // one demo hand once the instruction ends, then the learner drags B; BC ∥ AD snaps it into a parallelogram
-    { pdf: 8, id: 'dragPar', lines: [{ m: 'curious', t: 'Drag vertex B to make\nBC parallel to AD.' }],
+    { pdf: 8, id: 'dragPar', skin: 'intro', lines: [{ m: 'curious', t: 'Drag vertex B to make\nBC parallel to AD.' }],
       task: 'dragB', handOnce: 1, hint: 'Drag point B along the top side', idle: 'Drag B to the right until BC leans the same way as AD.',
-      after: [{ m: 'happy', t: 'Well done! Now BC is\nparallel to AD.' }], f: { par: 1 } },
+      after: [{ m: 'happy', t: 'Well done! Now BC is\nparallel to AD.' }], f: { par: 1, noDots: 1 } },
     { pdf: 9, id: 'bothPar', lines: [
       { m: 'surprised', t: 'Now both pairs of opposite\nsides are parallel.', glow: ['AB', 'CD'], chips: [{ t: 'AB ∥ CD', k: 'white' }] },
       { keep: 1, s: 'A D is parallel to B C.', glow: ['DA', 'BC'], chips: [{ t: 'AD ∥ BC', k: 'white' }] }], f: PG },
     { pdf: 10, id: 'defPg', lines: [{ t: 'We call this a Parallelogram.', pulse: 1, pulseAt: 'parallelogram',
       chips: [{ t: 'AB ∥ CD', k: 'white' }, { t: 'AD ∥ BC', k: 'white' }, { t: 'Parallelogram', k: 'name' }] }], f: PG },
-    { pdf: 11, id: 'defFull', lines: [{ t: 'A quadrilateral where both\npairs of opposite sides are\nparallel is called a\nparallelogram.',
-      chips: [{ t: 'AB ∥ CD', k: 'white' }, { t: 'AD ∥ BC', k: 'white' }, { t: 'Parallelogram', k: 'name' }] }], f: PG },
+    // screen 10 (storyboard page 11): the shape scales up, then letters, arrows and the two pair cards; as Swiftee
+    // says it, AB + CD glow with their card, then AD + BC with theirs; "parallelogram" pops the name card in on its
+    // own row and the whole outline glows once
+    { pdf: 11, id: 'defFull', enterGrow: 1, chipRows: 1, boardShiftY: -48, chipTop: 428,
+      enterChips: [{ t: 'AB ∥ CD', k: 'white' }, { t: 'AD ∥ BC', k: 'white' }],
+      lines: [{ t: 'A quadrilateral where both pairs\nof opposite sides are parallel is\ncalled a parallelogram.', cues: [
+        { at: 'pairs', glow: ['AB', 'CD'], hi: 'AB ∥ CD' },
+        { at: 'sides', glow: ['DA', 'BC'], hi: 'AD ∥ BC' },
+        { at: 'called', glow: null },
+        { at: 'parallelogram', chip: { t: 'Parallelogram', k: 'name' }, glow: ['AB', 'BC', 'CD', 'DA'], pulse: 1, ms: 1300 }] }],
+      f: PG },
 
     // ---------- Part 2 · opposite side lengths (pages 12-20) ----------
     { pdf: 12, id: 'lengthsQ', lines: [{ m: 'thinking', t: 'But what about the\nside lengths?' }], f: PG },
@@ -74,7 +86,9 @@ const LESSON = {
     { pdf: 15, id: 'interesting', lines: [{ m: 'surprised', t: 'There is something\ninteresting about\nthe lengths.' }],
       lenSeq: [[700, ['AB', 'CD']], [2300, ['DA', 'BC']]], f: Object.assign({ lenSeq: 1 }, PG, LENS) },
     Object.assign({ pdf: '16-17', id: 'askSides', lines: [{ m: 'curious', t: 'What do you notice\nabout the sides?' }],
-      ok: "That's correct! Opposite\nsides are equal.", okChips: [{ t: 'AB = CD', k: 'gold' }, { t: 'AD = BC', k: 'gold' }], okF: { ticks: 1 },
+      // right answer: the other option folds away, this one settles green in the centre, then AB + CD and AD + BC
+      // pulse in turn; the correct sound, no confetti (storyboard page 17)
+      ok: "That's correct! Opposite\nsides are equal.", soloOk: 1, calmOk: 1, okGlow: [['AB', 'CD'], ['DA', 'BC']], okF: { ticks: 1 },
       opts: [
         { id: 'all', t: 'All sides are equal', fb: 'Look at the lengths again. AB is 6 cm, but AD is only 3 cm.' },
         { id: 'opp', t: 'Opposite sides are equal', ok: true }

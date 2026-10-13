@@ -10,7 +10,10 @@
   const G = window.gsap;
   const reduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   const $ = (sel) => Array.from(document.querySelectorAll('.stage ' + sel));
-  const GLOW = 'drop-shadow(0px 0px 6px rgba(232,40,122,0.6))', NOGLOW = 'drop-shadow(0px 0px 0px rgba(232,40,122,0))';
+  // glow tint and resting edge width follow the screen's look: the opening screens (skin 'intro') are blue and thinner
+  const intro = () => !!document.querySelector('.stage.skin-intro');
+  const tint = (a) => 'rgba(' + (intro() ? '36,86,214' : '232,40,122') + ',' + a + ')';
+  const GLOW = () => 'drop-shadow(0px 0px 6px ' + tint(0.6) + ')', NOGLOW = () => 'drop-shadow(0px 0px 0px ' + tint(0) + ')';
   // one shared feel for every entrance: soft ease-out with a hint of overshoot, 90% -> 100% scale
   const ENTER = { duration: 0.6, ease: 'back.out(1.3)' };
   let ctx = G ? G.context(() => {}) : null;
@@ -18,8 +21,8 @@
   // the labels are centred on their point by CSS (translate -50% -50%); GSAP keeps that while it owns the transform
   const centred = (els) => G.set(els, { xPercent: -50, yPercent: -50, x: 0, y: 0 });
   // every element any Motion animation touches (Motion.clear wipes their animated properties on screen change)
-  const ANIMATED = '.tag.snum, .tag.vlab, .edge, .vdot, .shape-fill, .outline-settle, .pop-g';
-  const ANIMATED_SVG = '.edge, .vdot, .shape-fill, .outline-settle, svg g.pop-g';
+  const ANIMATED = '.tag.snum, .tag.vlab, .edge, .vdot, .shape-fill, .outline-settle, .pop-g, .par-ch';
+  const ANIMATED_SVG = '.edge, .vdot, .shape-fill, .outline-settle, svg g.pop-g, .par-ch';
 
   const Motion = {
     ok: !!G,
@@ -114,9 +117,9 @@
         sides.forEach((s, i) => {
           const el = $(s[0])[0]; if (!el) return;
           // immediateRender off: the side keeps fading out with the old shape until its own entrance starts
-          tl.fromTo(el, { opacity: 0, x: s[1], y: s[2], strokeWidth: 7, filter: GLOW },
+          tl.fromTo(el, { opacity: 0, x: s[1], y: s[2], strokeWidth: intro() ? 5.5 : 7, filter: GLOW() },
             { opacity: 1, x: 0, y: 0, duration: reduced ? 0 : 0.55, ease: 'power3.out', immediateRender: false }, 0.45 + i * 0.6)
-            .to(el, { strokeWidth: 5, filter: NOGLOW, duration: 0.3, ease: 'sine.out' }, '>-0.05');
+            .to(el, { strokeWidth: intro() ? 3.5 : 5, filter: NOGLOW(), duration: 0.3, ease: 'sine.out' }, '>-0.05');
         });
         tl.fromTo($('.outline-settle'), { opacity: 0 }, { opacity: 0.75, duration: 0.45, ease: 'sine.out' }, 3.0)
           .to($('.outline-settle'), { opacity: 0, duration: 0.85, ease: 'sine.inOut' }, '>')
@@ -148,10 +151,26 @@
         const tl = G.timeline(), dur = reduced ? 0 : 0.9;
         if (g) {
           tl.to(g, { scale: 1, opacity: 1, svgOrigin: cx + ' ' + cy, duration: dur, ease: 'power2.out' }, 0)
-            .fromTo(g, { filter: 'drop-shadow(0px 0px 0px rgba(232,40,122,0))' },
-              { filter: 'drop-shadow(0px 0px 12px rgba(232,40,122,0.45))', duration: dur * 0.45, ease: 'sine.out', yoyo: true, repeat: 1 }, 0);
+            .fromTo(g, { filter: 'drop-shadow(0px 0px 0px ' + tint(0) + ')' },
+              { filter: 'drop-shadow(0px 0px 12px ' + tint(0.45) + ')', duration: dur * 0.45, ease: 'sine.out', yoyo: true, repeat: 1 }, 0);
         }
         if (d) tl.to(d, { scale: 1, opacity: 1, transformOrigin: cx + 'px ' + cy + 'px', duration: dur, ease: 'power2.out' }, 0);
+        return tl;
+      });
+    },
+
+    // screen 10: the shape scales up into place (86% -> 100%, fading in), then its corner letters come in one by one
+    // and the parallel arrows settle on last
+    enterShape(cx, cy) {
+      if (!G) return;
+      const g = $('svg g.pop-g')[0], d = $('div.pop-g')[0], labels = $('.board .tag.vlab'), marks = $('.par-ch'), k = reduced ? 0 : 1;
+      add(() => {
+        const tl = G.timeline();
+        tl.set(labels.concat(marks), { opacity: 0 }, 0);
+        if (g) tl.fromTo(g, { scale: 0.86, opacity: 0, svgOrigin: cx + ' ' + cy }, { scale: 1, opacity: 1, svgOrigin: cx + ' ' + cy, duration: 0.7 * k, ease: 'power2.out' }, 0);
+        if (d) tl.fromTo(d, { scale: 0.86, opacity: 0, transformOrigin: cx + 'px ' + cy + 'px' }, { scale: 1, opacity: 1, transformOrigin: cx + 'px ' + cy + 'px', duration: 0.7 * k, ease: 'power2.out' }, 0);
+        tl.to(labels, { opacity: 1, duration: 0.35 * k, stagger: 0.08 * k, ease: 'sine.out' }, 0.55 * k)
+          .to(marks, { opacity: 1, duration: 0.4 * k, ease: 'sine.out' }, 0.8 * k);
         return tl;
       });
     },
