@@ -39,6 +39,8 @@ const tilt = (a) => ({ A: { x: 90, y: 112 }, B: { x: 390, y: 112 },
   C: { x: 390 + 170 * Math.cos(a * deg), y: 112 + 170 * Math.sin(a * deg) }, D: { x: 90 + 170 * Math.cos(a * deg), y: 112 + 170 * Math.sin(a * deg) } });
 const FIG_SIDES = { A: { x: 150, y: 112 }, B: { x: 440, y: 112 }, C: { x: 380, y: 282 }, D: { x: 90, y: 282 } };
 const CP = { cp: 1, optTop: 488 };
+// checkpoints with answer boxes and number tiles (two rows, ~124 px): start higher so the tiles stay inside the panel
+const FILL_CP = { optTop: 440, boardShiftY: -24 };
 
 const LESSON = {
   steps: [
@@ -47,8 +49,12 @@ const LESSON = {
     // (she waves hello as she speaks)
     { pdf: 1, id: 'intro', build: 1, skin: 'intro', lines: [{ m: 'waving', holdM: 1, t: 'We learnt about quadrilaterals\nearlier.' }], f: { noLetters: 1, noDots: 1 } },
     { pdf: 2, id: 'quadSides', sideNums: 1, skin: 'intro', lines: [{ m: 'happy', t: 'Any polygon with 4 sides is\ncalled a quadrilateral.' }], f: { noLetters: 1, noDots: 1 } },
-    { pdf: 3, id: 'special', assemble: 1, voiceDelay: 3000, skin: 'intro', lines: [{ m: 'happy', t: 'This is a special type of\nquadrilateral called Trapezium.', growAt: 'special', chips: [{ t: 'Trapezium', k: 'name' }] }], f: { noLetters: 1, noDots: 1 } },
-    { pdf: 4, id: 'onePair', skin: 'intro', lines: [{ t: 'A trapezium has one pair of\nopposite sides parallel.', chips: [{ t: 'Trapezium', k: 'name' }] }], f: { noLetters: 1, noDots: 1 } },
+    // screens 3-4: the name caption is a word cue, as on screen 10 - "Trapezium" pops in exactly as Swiftee says it and
+    // the outline glows once. Screen 4 never lights up AB/CD on "parallel": screen 5 asks which pair is parallel.
+    { pdf: 3, id: 'special', assemble: 1, voiceDelay: 3000, skin: 'intro', lines: [{ m: 'happy', t: 'This is a special type of\nquadrilateral called Trapezium.', growAt: 'special',
+      cues: [{ at: 'trapezium', chip: { t: 'Trapezium', k: 'name' }, glow: ['AB', 'BC', 'CD', 'DA'], ms: 1300 }] }], f: { noLetters: 1, noDots: 1 } },
+    { pdf: 4, id: 'onePair', skin: 'intro', lines: [{ t: 'A trapezium has one pair of\nopposite sides parallel.',
+      cues: [{ at: 'trapezium', chip: { t: 'Trapezium', k: 'name' }, glow: ['AB', 'BC', 'CD', 'DA'], pulse: 1, ms: 1300 }] }], f: { noLetters: 1, noDots: 1 } },
     Object.assign({ pdf: '5-6', id: 'askPar', skin: 'intro', lines: [{ m: 'curious', t: 'Which pair of sides are\nparallel to each other?' }],
       // right answer: AD ∥ BC folds away and AB ∥ CD settles alone in the centre, green (storyboard page 6)
       ok: "That's correct! AB ∥ CD.", soloOk: 1, okF: { par: 1 }, f: { noDots: 1 },
@@ -119,14 +125,14 @@ const LESSON = {
       ok: "That's right! Opposite sides\nare equal, so CD = 7 cm.",
       fig: { P: FIG_SIDES, sides: { AB: '7 cm', CD: '? cm' }, ticks: 1 },
       fill: { blanks: [{ id: 'CD', pre: 'CD =', post: 'cm', ans: '7' }], tiles: ['3.5', '7', '14'],
-        fb: { '3.5': 'CD is not half of AB. Opposite sides of a parallelogram are equal.', '14': 'CD is not double AB. Opposite sides of a parallelogram are equal.' } } }, CP),
+        fb: { '3.5': 'CD is not half of AB. Opposite sides of a parallelogram are equal.', '14': 'CD is not double AB. Opposite sides of a parallelogram are equal.' } } }, CP, FILL_CP),
     Object.assign({ pdf: 21, id: 'cp1c', cpTitle: 'Checkpoint 1 · Find the Missing Sides',
       lines: [{ m: 'curious', t: 'In this parallelogram,\nAB = 8 cm and BC = 5 cm.\nFind the lengths of\nCD and AD.' }],
       hint: 'Drag a number into each box', idle: 'CD is opposite AB, and AD is opposite BC.',
       ok: 'Brilliant! CD = AB = 8 cm\nand AD = BC = 5 cm.',
       fig: { P: FIG_SIDES, sides: { AB: '8 cm', BC: '5 cm', CD: '?', DA: '?' }, ticks: 1 },
       fill: { blanks: [{ id: 'CD', pre: 'CD =', post: 'cm', ans: '8' }, { id: 'AD', pre: 'AD =', post: 'cm', ans: '5' }], tiles: ['3', '5', '8', '13'],
-        fb: { any: 'Look at which side is opposite. CD is opposite AB, and AD is opposite BC.' } } }, CP),
+        fb: { any: 'Look at which side is opposite. CD is opposite AB, and AD is opposite BC.' } } }, CP, FILL_CP),
 
     // ---------- Part 4 · opposite angles (pages 22-31) ----------
     { pdf: 22, id: 'sidesDone', lines: [{ m: 'happy', t: 'We learnt all about the\nsides of a parallelogram.' }] },
@@ -159,7 +165,7 @@ const LESSON = {
         { id: 'BD', t: '∠B & ∠D', fb: '∠B and ∠D are opposite angles. 70° + 70° is not 180°.' },
         { id: 'AB', t: '∠A & ∠B', ok: true },
         { id: 'AD', t: '∠A & ∠D', ok: true, req: false, fb: 'Yes, but we found that pair already! Find the other pairs.' }
-      ], f: { arcs: 'ABCD' } }, PRACTICE, { optTop: 470, optWrap: 1 }),
+      ], f: { arcs: 'ABCD' } }, PRACTICE, { optTop: 446, optWrap: 1, boardShiftY: -28 }),
     { pdf: 36, id: 'adjRule', lines: [{ m: 'happy', t: 'All the adjacent angles\nof this parallelogram\nadd up to 180°.',
       chips: [{ t: '∠A + ∠D = 180°', k: 'white sm' }, { t: '∠A + ∠B = 180°', k: 'white sm' }, { t: '∠B + ∠C = 180°', k: 'white sm' }, { t: '∠C + ∠D = 180°', k: 'white sm' }] }],
       f: { arcs: 'ABCD', supp: ['AD', 'AB', 'BC', 'CD'] } },
@@ -192,7 +198,7 @@ const LESSON = {
       fig: { P: tilt(65), angles: { A: '65°', B: '?', C: '?', D: '?' } },
       fill: { blanks: [{ id: 'B', pre: '∠B =', post: '°', ans: '115' }, { id: 'C', pre: '∠C =', post: '°', ans: '65' }, { id: 'D', pre: '∠D =', post: '°', ans: '115' }],
         tiles: ['25', '65', '115', '180'],
-        fb: { any: '∠C is opposite ∠A, so they are equal. ∠B and ∠D are next to ∠A, so each adds with 65° to make 180°.' } } }, CP),
+        fb: { any: '∠C is opposite ∠A, so they are equal. ∠B and ∠D are next to ∠A, so each adds with 65° to make 180°.' } } }, CP, FILL_CP),
 
     // ---------- Part 7 · diagonals (pages 38-49) ----------
     { pdf: 38, id: 'explored', lines: [{ m: 'happy', t: 'We have explored all about\nthe sides and angles of\na parallelogram.' }] },
@@ -235,7 +241,7 @@ const LESSON = {
       ok: 'Well done! OC = AO = 5 cm\nand OD = BO = 3 cm.',
       fig: { P: FIG_SIDES, diag: 1, halves: { A: '5 cm', B: '3 cm' }, hticks: 1 },
       fill: { blanks: [{ id: 'OC', pre: 'OC =', post: 'cm', ans: '5' }, { id: 'OD', pre: 'OD =', post: 'cm', ans: '3' }], tiles: ['3', '5', '6', '10'],
-        fb: { any: 'OC is the other half of AC, so it equals AO. OD is the other half of BD, so it equals BO.' } } }, CP),
+        fb: { any: 'OC is the other half of AC, so it equals AO. OD is the other half of BD, so it equals BO.' } } }, CP, FILL_CP),
     Object.assign({ pdf: 50, id: 'cp3c', multi: 1, cpTitle: 'Checkpoint 3 · Choose the Correct Statements',
       lines: [{ m: 'curious', t: 'Which of the following are\ntrue for this parallelogram?\nSelect all that apply.' }],
       hint: 'Tap every true statement', idle: 'The diagonals bisect each other. Which statements say that?',
