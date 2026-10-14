@@ -54,7 +54,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .edge{transition:stroke .35s ease,stroke-width .3s cubic-bezier(.3,0,.3,1),opacity .3s ease}
 /* screen 4: a slanted side flashes once (thicker, soft highlighter glow) before its dotted extension draws */
 .edge.flash{animation:edgeFlash .8s ease-in-out}
-@keyframes edgeFlash{0%,100%{stroke-width:5px;filter:none}50%{stroke-width:9px;filter:drop-shadow(0 0 6px var(--pg-hl,#b8e62e))}}
+@keyframes edgeFlash{0%,100%{stroke-width:5px;filter:none}50%{stroke-width:9px;filter:drop-shadow(0 0 6px var(--pg-hl,#FFBE55))}}
 @media (prefers-reduced-motion: reduce){.edge.flash{animation:none;stroke-width:8px}}
 .arc{stroke-dasharray:100 100;animation:arcIn .5s ease-out backwards}
 .d1{animation-delay:.15s}
@@ -149,7 +149,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .board{transform-origin:0 0;transition:transform .7s cubic-bezier(.22,.8,.3,1)}
 /* (the board <svg> takes its transform-origin/transition inline: the runtime does not bind class on the svg root) */
 .shape-fill.spot{animation:shapePulse 2.4s ease-in-out .7s infinite}
-@keyframes shapePulse{0%,100%{filter:drop-shadow(0 0 0 rgba(184,230,46,0))}50%{filter:drop-shadow(0 0 14px rgba(184,230,46,.55))}}
+@keyframes shapePulse{0%,100%{filter:drop-shadow(0 0 0 rgba(255,190,85,0))}50%{filter:drop-shadow(0 0 14px rgba(255,190,85,.55))}}
 .swiftee{left:130px;animation:swHome .45s ease-out}
 .swiftee.spot{left:900px;animation:swSpot .5s ease-out}
 @keyframes swHome{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -226,8 +226,8 @@ a{color:#123b63}a:hover{color:#0b2742}
 .bs{opacity:0;animation:starPop .6s cubic-bezier(.2,1.6,.4,1) forwards;filter:drop-shadow(0 6px 10px rgba(196,143,5,.35))}
 .bs.s1{animation-delay:.25s}.bs.s2{animation-delay:.5s;margin-bottom:22px}.bs.s3{animation-delay:.75s}
 @keyframes starPop{from{opacity:0;transform:scale(.2) rotate(-40deg)}to{opacity:1;transform:scale(1) rotate(0)}}
-.cf{position:absolute;top:-24px;width:10px;height:16px;border-radius:3px;opacity:0;animation:cfFall 2.6s cubic-bezier(.3,.6,.5,1) forwards}
-@keyframes cfFall{0%{opacity:1;translate:0 0}85%{opacity:1}100%{opacity:0;translate:-30px 760px;rotate:540deg}}
+.cf{position:absolute;top:-24px;width:10px;height:16px;border-radius:3px;opacity:0;animation:cfFallStage 2.6s cubic-bezier(.3,.6,.5,1) forwards}
+@keyframes cfFallStage{0%{opacity:1;translate:0 0}85%{opacity:1}100%{opacity:0;translate:-30px 760px;rotate:540deg}}
 @media (prefers-reduced-motion: reduce){.cf{display:none}.bs{animation:none;opacity:1}}
 /* Scene layout (screens 1-30): ice panel on the right, Swiftee + bubble on the snow at the left */
 .stage.scene .panel-img{left:512px!important;top:104px!important;width:728px!important;height:480px!important}
@@ -278,13 +278,13 @@ a{color:#123b63}a:hover{color:#0b2742}
 .edge.lit.emph{stroke-width:8px}
 /* screen 4 leg trace: a soft pink glow drawn on along the leg (D->A, C->B); at the corner it fades off the side while
    the dotted extension (xleg) draws on from the corner */
-.trace{stroke:var(--pg-slate,#3b5573);opacity:.95;filter:drop-shadow(0 0 4px rgba(184,230,46,.7));transition:opacity .35s ease}
+.trace{stroke:var(--pg-line,#D98A2B);opacity:.95;filter:drop-shadow(0 0 4px rgba(255,190,85,.7));transition:opacity .35s ease}
 .trace.out{opacity:0}
 .xleg{animation:xlegIn .2s ease both}
 @keyframes xlegIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){.xleg{animation:none}.trace{transition:none}}
 /* settling glow round a finished outline (screens 1 and 4) */
-.outline-settle{opacity:0;stroke:var(--pg-hl,#b8e62e);stroke-width:12px;filter:drop-shadow(0 0 6px rgba(184,230,46,.7))} /* faded in/out by GSAP (js/motion.js) */
+.outline-settle{opacity:0;stroke:var(--pg-hl,#FFBE55);stroke-width:12px;filter:drop-shadow(0 0 6px rgba(255,190,85,.7))} /* faded in/out by GSAP (js/motion.js) */
 /* screen 2 side numbers: bold plain numerals (no box); their entrance is GSAP (Motion.sideNums) */
 .tag.snum{background:none;box-shadow:none;padding:0;font-family:'Nunito',system-ui,sans-serif;font-weight:900;font-size:26px;color:#123b63}
 
@@ -294,8 +294,8 @@ a{color:#123b63}a:hover{color:#0b2742}
 
 /* ===== Parallelogram lesson additions ===== */
 /* equal angles share a colour once found: A, C orange; B, D blue (CSS beats the arcs' own stroke) */
-.arc.kA{stroke:var(--pg-vA,#ea580c)}.arc.kB{stroke:var(--pg-vB,#7c3aed)}.arc.kC{stroke:var(--pg-vC,#0284c7)}.arc.kD{stroke:var(--pg-vD,#059669)}
-.arc.pa{stroke:var(--pg-vA,#ea580c)}.arc.pb{stroke:var(--pg-vB,#7c3aed)}
+.arc.kA{stroke:var(--pg-vA,#e11d48)}.arc.kB{stroke:var(--pg-vB,#7c3aed)}.arc.kC{stroke:var(--pg-vC,#0284c7)}.arc.kD{stroke:var(--pg-vD,#059669)}
+.arc.pa{stroke:var(--pg-vA,#e11d48)}.arc.pb{stroke:var(--pg-vB,#7c3aed)}
 /* a checkpoint's unknown ('?') labels */
 .tag.q{color:#6a2bb0;border-color:#b98be6;background:#f6efff;font-weight:900}
 .mtag.fig{animation:none}
@@ -370,7 +370,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .stage.skin-intro .bubble-tail path{fill:#fff;stroke:none}
 .stage.skin-intro .edge{stroke-width:3.5px}
 .stage.skin-intro .trace{stroke-width:4.5px}
-.shape-fill{fill:var(--pg-fill,#f7e4f2);transition:fill .45s ease}
+.shape-fill{fill:var(--pg-fill,#FFE0A3);transition:fill .45s ease}
 .stage.skin-intro .tag.snum{color:#16263a}
 /* screen 3: the shape's name is a plain caption just under the shape (a figure label, not a card) */
 .stage.skin-intro .chip.name{background:none;border:none;box-shadow:none;padding:0;position:relative;top:-62px;font-weight:800;font-size:30px;color:#16263a}
@@ -387,7 +387,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .chip.brk{flex-basis:100%;height:0;padding:0;margin:0;border:0;background:none;box-shadow:none;animation:none}
 /* word cues (cue-pulse screens): the pair being said pulses gently in its own colour, and its card lifts softly */
 .chip{transition:transform .3s cubic-bezier(.3,0,.2,1),box-shadow .3s ease,border-color .3s ease}
-.chip.hi{transform:translateY(-4px) scale(1.06);border-color:var(--pg-hlRing,#5f9a0e);box-shadow:0 8px 18px rgba(95,154,14,.28)}
+.chip.hi{transform:translateY(-4px) scale(1.06);border-color:var(--pg-hlRing,#FFBE55);box-shadow:0 8px 18px rgba(255,190,85,.3)}
 @media (prefers-reduced-motion: reduce){.chip{transition:none}}
 .chip-row.top{align-content:flex-start!important}
 /* tight corners: the angle label steps down a size so it still fits inside the shape (layout in renderVals) */
@@ -398,18 +398,18 @@ a{color:#123b63}a:hover{color:#0b2742}
    A side being named or worked on: a soft band draws on under it (.hl, pathLength 100), a ring bead glides back and
    forth along it (.bead), and while only some sides are lit the others dim (.edge.dim). The build trail (screen 1) is
    the same band following the pen; it fades out (.out) as the fill comes in. A named corner grows into a ring (engine). */
-.hl{stroke:var(--pg-hl,#b8e62e);stroke-width:13px;opacity:.85;stroke-dasharray:100 100;animation:hlIn .4s cubic-bezier(.3,0,.2,1) backwards}
+.hl{stroke:var(--pg-hl,#FFBE55);stroke-width:13px;opacity:.85;stroke-dasharray:100 100;animation:hlIn .4s cubic-bezier(.3,0,.2,1) backwards}
 @keyframes hlIn{from{stroke-dashoffset:100;opacity:0}to{stroke-dashoffset:0;opacity:.85}}
 .hl.trail{stroke-dasharray:none;animation:none;transition:opacity .9s ease}
 .hl.trail.out{opacity:0}
 .edge.dim{opacity:.38}
-.bead{stroke:var(--pg-hlRing,#5f9a0e);filter:drop-shadow(0 1px 2px rgba(18,59,99,.25));animation:beadRun 1.6s ease-in-out infinite alternate}
+.bead{stroke:var(--pg-hlRing,#FFBE55);filter:drop-shadow(0 1px 2px rgba(18,59,99,.25));animation:beadRun 1.6s ease-in-out infinite alternate}
 @keyframes beadRun{from{transform:translateX(0)}to{transform:translateX(var(--L))}}
 .vdot{transition:r .3s cubic-bezier(.3,0,.3,1),stroke .25s ease,stroke-width .25s ease}
 @media (prefers-reduced-motion: reduce){.hl{animation:none}.hl.trail{transition:none}.bead{animation:none;transform:translateX(calc(var(--L) / 2))}.vdot{transition:none}}
 
 /* parallel chevrons wear their pair's colour (AB, CD: sideA; AD, BC: sideB) */
-.par-ch.ch-a{stroke:var(--pg-sideA,#0a7ea8)}.par-ch.ch-b{stroke:var(--pg-sideB,#c2187a)}
+.par-ch.ch-a{stroke:var(--pg-ink,#1d2f52)}.par-ch.ch-b{stroke:var(--pg-ink,#1d2f52)}
 /* a side named in the voice-over: its band draws on, holds and fades within CONFIG.emph.holdMs */
 .hl.flash{animation:hlFlash .65s ease-out both}
 @keyframes hlFlash{0%{stroke-dashoffset:100;opacity:0}35%{stroke-dashoffset:0;opacity:.85}70%{opacity:.85}100%{stroke-dashoffset:0;opacity:0}}
@@ -418,5 +418,37 @@ a{color:#123b63}a:hover{color:#0b2742}
 .arc,.tag.alab{transition:opacity .3s ease,stroke-width .3s cubic-bezier(.3,0,.3,1),transform .3s cubic-bezier(.3,0,.3,1)}
 @media (prefers-reduced-motion: reduce){.hl.flash{animation:none;opacity:.85}.arc,.tag.alab{transition:none}}
 /* pair cards (AB ∥ CD, AB = CD / AD ∥ BC, AD = BC) carry their sides' colour, as in the colour key */
-.chip.pairA{border-color:var(--pg-sideA,#0a7ea8);color:#075a78}.chip.pairB{border-color:var(--pg-sideB,#c2187a);color:#8f1059}
-.chip.pairA.hi,.chip.pairB.hi{border-color:var(--pg-hlRing,#5f9a0e)}
+
+.chip.pairA.hi,.chip.pairB.hi{border-color:var(--pg-hlRing,#FFBE55)}
+
+/* ===== Fuchsia Beam (CONFIG.palette): lines #D98A2B, fill #FFE0A3, glow #FFBE55, notation panels #FFF8EC ===== */
+.shape-fill{fill-opacity:.92}
+.hl{opacity:.6}
+@keyframes hlIn{from{stroke-dashoffset:100;opacity:0}to{stroke-dashoffset:0;opacity:.6}}
+@keyframes hlFlash{0%{stroke-dashoffset:100;opacity:0}35%{stroke-dashoffset:0;opacity:.6}70%{opacity:.6}100%{stroke-dashoffset:0;opacity:0}}
+.ticks{stroke:var(--pg-ink,#1d2f52)}
+.ltag,.mtag{border-color:var(--pg-line,#D98A2B);color:var(--pg-ink,#1d2f52);background:var(--pg-panel,#FFF8EC)}
+.bead{stroke-width:4px}
+/* cards = notation panels: soft pink face, highlight border, dark navy type, relation signs in the highlight colour,
+   and a small caption naming the property (Parallel sides, Equal angles ...) */
+.stage .chip,.stage .chip.gold,.stage .chip.name{background:var(--pg-panel,#FFF8EC);border:2.5px solid var(--pg-line,#D98A2B);color:var(--pg-ink,#1d2f52);
+  box-shadow:0 4px 12px rgba(217,138,43,.14);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.stage .chip.name{border-width:3.5px;box-shadow:0 6px 16px rgba(217,138,43,.22)}
+.chip-cap{display:none;font-family:'Nunito',system-ui,sans-serif;font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;line-height:1;color:#6c7895;margin:1px 0 3px}
+.chip.hascap .chip-cap{display:block}
+.chip-ln{white-space:pre}
+.chip-ln .op{color:var(--pg-line,#D98A2B);font-weight:900}
+.stage .chip.hi{border-color:var(--pg-hl,#FFBE55);box-shadow:0 0 0 4px rgba(255,190,85,.22),0 8px 18px rgba(217,138,43,.25)}
+.stage.skin-intro .chip.name{background:none;border:none;box-shadow:none}
+/* the row-break item between card rows (chipRows) is not a card */
+.stage .chip.brk{flex-basis:100%;height:0;padding:0;margin:0;border:0;background:none;box-shadow:none;animation:none}
+/* confetti (css/confetti.css, kept an exact copy): a clipping container stops Chromium painting the kit's 3D-turned
+   faces, so the layers do not clip; the layer is fixed to the window, so pieces leaving the bottom never scroll the page */
+.fx-layer,.fx-layer .fx-confetti{overflow:visible}
+/* the kit's .w wrapper shares its name with the bubble's words (.w, hidden until revealed): keep it visible */
+.fx-layer .fx-confetti .w{opacity:1;transition:none}
+/* parallel chevrons and equal-length ticks arrive as a small pop on the line (when a pair is declared parallel / equal),
+   so the mark reads as an event tied to the voice, not just a fade */
+.par-ch.fadein,.ticks.fadein{transform-box:fill-box;transform-origin:center;animation:markIn .5s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes markIn{0%{opacity:0;transform:scale(.3)}60%{opacity:1}100%{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.par-ch.fadein,.ticks.fadein{animation:fade .3s ease-out}}

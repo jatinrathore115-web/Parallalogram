@@ -1691,14 +1691,13 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     g.xAB = be('AB', A, B);
     g.xCD = be('CD', D, C);
     // edges
-    // shape colours (CONFIG.palette): a pair of sides wears its colour only once it is parallel - AB, CD in sideA once
-    // marked parallel (par) or the shape is a parallelogram, AD, BC in sideB likewise (par2); slate until then. So the
-    // quadrilateral starts all slate, AB / CD take their colour when the learner finds the parallel pair, and AD / BC
-    // light up the moment the drag makes BC parallel to AD.
+    // shape colours (CONFIG.palette): every side in the line colour, except a trapezium's legs once its parallel pair has
+    // been found (AB, CD marked parallel, AD, BC not): they turn slate, so the parallel pair stands out. The moment the
+    // drag makes BC parallel to AD (a parallelogram) they take the line colour again.
     const PAL = CONFIG.palette, OR = '#f08a24', PU = '#8e44d6', pgShape = this.isPg(P);
-    const parA = !!(f.par || pgShape), parB = !!(f.par2 || pgShape);
-    const baseCol = (k) => (st.id === 'bases' && s.tap[k] ? OR : parA ? PAL.sideA : PAL.slate);
-    const legCol = (k) => ((st.id === 'legs' && s.tap[k]) || f.legsPurple ? PU : parB ? PAL.sideB : PAL.slate);
+    const legsPlain = !!f.par && !f.par2 && !pgShape;
+    const baseCol = (k) => (st.id === 'bases' && s.tap[k] ? OR : PAL.line);
+    const legCol = (k) => ((st.id === 'legs' && s.tap[k]) || f.legsPurple ? PU : legsPlain ? PAL.slate : PAL.line);
     // flash (auto extend), wiggle (wrong-way drag), emph (named in the voice-over), lit / dim (highlighter focus)
     const eCls = (k) => 'e' + k + ' ' + (s.flash === k ? 'flash' : '') + (s.wig === k ? ' wiggle' : '') + (s.emph && s.emph[k] ? ' emph' : '') +
       (lit[k] ? ' lit' : nLit && nLit < 4 ? ' dim' : '');
@@ -2009,6 +2008,30 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     return { g: g, tags: tags, V: V };
   }
 
+  // explanation and task screens: the shape shown bigger (CONFIG.scene.zoom), about the opening shape's centre (a fixed
+  // point, so the board never shifts while a corner is dragged); questions and checkpoints keep it at 1
+  // a card as a notation panel: a small caption naming the property it states, and its relation signs (∥ = +) split
+  // out so they wear the highlight colour (p0 s0 p1 s1 ... in index.html)
+  chipView(c) {
+    const t = c.t || '', side = '(AB|BC|CD|AD|DA)', half = '(AO|OA|BO|OB|CO|OC|DO|OD)';
+    const cap = /\bname\b|brk/.test(c.k) ? '' : /∥/.test(t) ? 'Parallel sides' : /^∠[A-D] = ∠[A-D]$/.test(t) ? 'Equal angles' :
+      /180°/.test(t) ? 'Supplementary' : new RegExp('^' + side + ' = ' + side + '$').test(t) ? 'Equal sides' :
+      new RegExp('^' + half + ' = ' + half + '$').test(t) ? 'Equal halves' : '';
+    const bits = t.split(/ (∥|=|\+) /), v = { cap: cap };
+    // the spaces travel with the sign, so unused slots take no room (the runtime wraps every value in a span: no :empty)
+    for (let i = 0; i < 5; i++) { v['p' + i] = bits[2 * i] || ''; if (i < 4) v['s' + i] = bits[2 * i + 1] ? ' ' + bits[2 * i + 1] + ' ' : ''; }
+    return v;
+  }
+  zoomed(st) { return !(st.opts || st.fill || st.grid || st.fig || st.cfu || st.end || st.noBoard) && (CONFIG.scene.zoom || 1) !== 1; }
+  // a zoomed screen: the shape (as it was when the screen opened, so nothing shifts while a corner is dragged) is
+  // scaled about its centre and that centre placed at CONFIG.scene.zoomAt (board px) - the panel's upper middle, clear
+  // of the card row. Unzoomed screens keep their usual nudge (boardShiftY).
+  zoomTf(st) {
+    const Z = CONFIG.scene, P0 = (this.snaps && this.snaps[this.state.step]) || this.state.P;
+    if (!this.zoomed(st)) return 'translate(' + Z.boardX + 'px, ' + (st.boardShiftY || 0) + 'px) translate(0px, 0px) scale(1) translate(0px, 0px)';
+    const cx = Math.round((P0.A.x + P0.B.x + P0.C.x + P0.D.x) / 4), cy = Math.round((P0.A.y + P0.B.y + P0.C.y + P0.D.y) / 4);
+    return 'translate(' + Z.boardX + 'px, 0px) translate(' + Z.zoomAt[0] + 'px, ' + Z.zoomAt[1] + 'px) scale(' + Z.zoom + ') translate(' + -cx + 'px, ' + -cy + 'px)';
+  }
   renderVals() {
     const s = this.state, steps = this.steps(), st = this.cur();
     const isLesson = !st.cfu && !st.grid && !st.end && !st.noBoard;
@@ -2130,14 +2153,14 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       chips: chips.reduce((a, c) => a.concat(st.chipRows && /\bname\b/.test(c.k) && a.length ? [{ t: '', k: 'brk' }] : [], [c]), [])
         .map((c) => (/^(AB|CD) [∥=] (AB|CD)$/.test(c.t) ? Object.assign({}, c, { k: c.k + ' pairA' }) :
           /^(AD|BC) [∥=] (AD|BC)$/.test(c.t) ? Object.assign({}, c, { k: c.k + ' pairB' }) : c))
-        .map((c) => ({ t: c.t, k: c.k + (c.t.length > 20 ? ' long' : '') + (c.t && c.t === s.chipHi ? ' hi' : '') })),
+        .map((c) => ((v) => Object.assign(v, { k: v.k + (v.cap ? ' hascap' : '') }))(Object.assign({ t: c.t, k: c.k + (c.t.length > 20 ? ' long' : '') + (c.t && c.t === s.chipHi ? ' hi' : '') }, this.chipView(c)))),
       rootDown: () => this.rootDown(),
       wordSize: wi > 15 || (s.line || '').length > 80 ? 22 : 24, // long lines get the smaller size
       c1: c1, hasOpts: hasOpts, opts: opts,
       // qFocus: shape centred in the panel with the answers in a row under it (CONFIG.qFocus); otherwise the usual right column
       optTop: st.qFocus && s.qc ? CONFIG.qFocus.optTop : st.optTop || 376, optLeft: st.qFocus && s.qc ? CONFIG.qFocus.cx - CONFIG.qFocus.optW / 2 : scene ? CONFIG.scene.chipLeft + 8 : 650,
       optW: st.qFocus && s.qc ? CONFIG.qFocus.optW : 504, optCls: fadeV + (st.qFocus ? ' opts-in' : '') + (this.busy() ? ' wait' : ' go') + (st.optWrap ? ' wrap' : '') + (st.multi ? ' multi' : '') + (st.soloOk ? ' solo-ok' : ''),
-      qx: CONFIG.qFocus.cx - 250, qy: s.qc ? CONFIG.qFocus.shapeTop : CONFIG.qFocus.shapeTop0, chipTop: st.chipTop || (scene ? CONFIG.scene.chipTop : 528), chipLeft: scene ? CONFIG.scene.chipLeft : 602, // answers centred under the shape
+      qx: CONFIG.qFocus.cx - 250, qy: s.qc ? CONFIG.qFocus.shapeTop : CONFIG.qFocus.shapeTop0, chipTop: (this.zoomed(st) ? (st.chipRows ? CONFIG.scene.chipTop - 44 : 0) : st.chipTop) || (scene ? CONFIG.scene.chipTop : 528), chipLeft: scene ? CONFIG.scene.chipLeft : 602, // answers centred under the shape
       celebrate: st.id === 'wellDone',
       labs: labs, slots: slots,
       stars: [0, 1, 2].map((i) => ({ cls: i < nStars ? 'on' : '' })),
@@ -2152,7 +2175,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       nextLabel: isLastCfu ? 'Finish' : 'Next',
       // spotlight: the board (shape + its labels) glides to centre stage and grows; Swiftee moves right; no bubble
       sceneCls: (scene ? 'scene' : '') + (st.skin ? ' skin-' + st.skin : '') + (st.enterGrow || st.okGlow || (st.lines || []).some((L) => L.cues) ? ' cue-pulse' : ''), // skin: a screen's own look (css/game.css)
-      boardTf: scene ? 'translate(' + CONFIG.scene.boardX + 'px, ' + (st.boardShiftY || 0) + 'px)' : spot ? tf(CONFIG.spotlight) : (st.layout === 'focus' && s.centered ? tf(CONFIG.focus) : (st.layout === 'top' ? tf(CONFIG.topLayout) : (st.boardShift || st.boardShiftY ? 'translate(' + (st.boardShift || 0) + 'px, ' + (st.boardShiftY || 0) + 'px)' : 'none'))),
+      boardTf: scene ? this.zoomTf(st) : spot ? tf(CONFIG.spotlight) : (st.layout === 'focus' && s.centered ? tf(CONFIG.focus) : (st.layout === 'top' ? tf(CONFIG.topLayout) : (st.boardShift || st.boardShiftY ? 'translate(' + (st.boardShift || 0) + 'px, ' + (st.boardShiftY || 0) + 'px)' : 'none'))),
       boardCls: fadeV + (st.assemble ? ' asm' : ''), // fade class + assemble (screen 4): the four sides fly in and form the shape - all in CSS (.asm)
       spotFill: spot ? 'spot' : '', // (screen 1 build: Motion hides the fill and fades it in last)
       // pulse: the whole shape (and its labels) zooms once about its own centre (no fill glow)

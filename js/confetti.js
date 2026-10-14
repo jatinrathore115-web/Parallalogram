@@ -1,72 +1,58 @@
 // =====================================================================
-// CONFETTI — one short burst falling from the top of the stage, for a correct interaction.
-// window.Confetti.burst() drops a fresh set of pieces across the full width; they flutter down and fade out
-// in the upper part of the stage (gone by ~FADE_TO px), so the bubble, Swiftee and the shape are never
-// covered for long. Drawn on a canvas over the stage that ignores the pointer; runs only while pieces are live.
-// Off for prefers-reduced-motion.
+// CONFETTI — FLN animation kit confetti (styles: css/confetti.css, an exact copy of the game build).
+// window.Confetti.burst() is called for every correct learner action (cheer() in js/game-engine.js; screens with
+// calmOk get the sound and praise only). Each burst adds one .fx-layer over the whole window holding an .fx-confetti
+// field of paper pieces; the layer removes itself once its last piece has fallen. Pieces are sized with the stage:
+// --scale = min(window width / 1333, window height / 750). Off for prefers-reduced-motion.
+// Each piece: .p falls (cfFall: --x, --fall, --delay, --drift, --dist) > .w glides and bobs (cfGlide: --rockT, --sway,
+// --bob) > .f rocks (cfRock) or, for ~22%, tumbles end over end (cfTumble: --tilt, --yaw, --amp), with a bright front
+// face (--c) and the same hue darkened behind (--c2). Glide and rock share --delay and --rockT, so the flip lands on
+// the direction reversal.
 // =====================================================================
 (function () {
-  var W = 1280, H = 720;
-  var N = 70;                       // pieces per burst
-  var FADE_FROM = 230, FADE_TO = 470; // pieces are fully visible above FADE_FROM and gone by FADE_TO (stage px)
-  var COLORS = ['#f2b51c', '#2b7bd6', '#e8643c', '#2e9e4f', '#8e44d6', '#56bdf4', '#e8287a'];
+  var N = 110;                       // pieces per burst
+  // the lesson's Honey Mist tones with festive accents that pop on the blue scene
+  var COLORS = ['#D98A2B', '#FFBE55', '#FFE0A3', '#2EC4E6', '#7C3AED', '#E11D48', '#8BD64B', '#3B82F6'];
+  var SHAPES = [['sq', 30], ['rc', 34], ['ln', 20], ['st', 16]]; // [class, weight]
   var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-
   var rnd = function (a, b) { return a + Math.random() * (b - a); };
-  var parts = [], running = false, last = 0, cv = null, ctx = null, dpr = 1;
+  var pick = function () {
+    var r = Math.random() * 100;
+    for (var i = 0; i < SHAPES.length; i++) { r -= SHAPES[i][1]; if (r < 0) return SHAPES[i][0]; }
+    return 'sq';
+  };
+  // the back face: the same hue, darkened
+  var dark = function (hex) {
+    var n = parseInt(hex.slice(1), 16), k = 0.68;
+    var c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (v) { return Math.round(v * k); });
+    return 'rgb(' + c.join(',') + ')';
+  };
 
-  function canvas() {
-    if (cv && cv.isConnected) return cv;
-    cv = document.querySelector('.stage canvas.confetti');
-    ctx = null;
-    return cv;
-  }
   function burst() {
-    if (reduced || !canvas()) return;
-    parts = []; // once per success: a new burst replaces any pieces still falling
+    if (reduced || !document.body) return;
+    var W = window.innerWidth, H = window.innerHeight, scale = Math.min(W / 1333, H / 750);
+    var layer = document.createElement('div');
+    layer.className = 'fx-layer';
+    layer.setAttribute('aria-hidden', 'true');
+    layer.style.setProperty('--scale', scale.toFixed(3));
+    var field = document.createElement('div');
+    field.className = 'fx-confetti';
+    var html = '', last = 0;
     for (var i = 0; i < N; i++) {
-      parts.push({
-        x: (i + Math.random()) * (W / N), y: rnd(-60, -10), d: rnd(0, 0.35), // spread evenly across the top, slight stagger
-        vx: rnd(-30, 30), vy: rnd(150, 230), w: rnd(7, 11), h: rnd(10, 15),
-        rot: rnd(0, Math.PI * 2), vr: rnd(-6, 6), sw: rnd(10, 26), sf: rnd(2, 4), ph: rnd(0, Math.PI * 2),
-        c: COLORS[i % COLORS.length]
-      });
+      var fall = rnd(2.6, 3.9), delay = rnd(0, 0.5), c = COLORS[i % COLORS.length];
+      last = Math.max(last, fall + delay);
+      html += '<span class="p" style="' +
+        '--x:' + ((i + Math.random()) * (W / N)).toFixed(1) + 'px;--fall:' + fall.toFixed(2) + 's;--delay:' + delay.toFixed(2) + 's;' +
+        '--drift:' + (rnd(-50, 50) * scale).toFixed(1) + 'px;--dist:' + Math.round(H + 60) + 'px;' +
+        '--rockT:' + rnd(0.9, 1.5).toFixed(2) + 's;--sway:' + (rnd(8, 22) * scale).toFixed(1) + 'px;--bob:' + (rnd(5, 12) * scale).toFixed(1) + 'px;' +
+        '--tilt:' + rnd(-40, 40).toFixed(0) + 'deg;--yaw:' + rnd(-35, 35).toFixed(0) + 'deg;--amp:' + rnd(48, 70).toFixed(0) + 'deg;' +
+        '--z:' + rnd(0.8, 1.25).toFixed(2) + ';--dim:' + rnd(0.85, 1).toFixed(2) + ';--c:' + c + ';--c2:' + dark(c) + '">' +
+        '<span class="w"><span class="f ' + pick() + (Math.random() < 0.22 ? ' tum' : '') + '"></span></span></span>';
     }
-    if (!running) { running = true; last = 0; requestAnimationFrame(frame); }
-  }
-  function frame(now) {
-    var c = canvas();
-    if (!c) { running = false; return; }
-    if (!ctx) {
-      dpr = Math.min(2, (window.devicePixelRatio || 1) * 1.5); // the stage is drawn at 1.5x
-      c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
-      ctx = c.getContext('2d');
-    }
-    var dt = Math.min(0.05, (now - (last || now)) / 1000);
-    last = now;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    var live = 0;
-    for (var i = 0; i < parts.length; i++) {
-      var p = parts[i];
-      if (p.d > 0) { p.d -= dt; live++; continue; }
-      p.y += p.vy * dt; p.x += p.vx * dt; p.rot += p.vr * dt;
-      p.vy = Math.max(110, p.vy - 40 * dt); // eases into a gentle flutter
-      if (p.y > FADE_TO) continue;
-      live++;
-      var a = p.y < FADE_FROM ? 1 : 1 - (p.y - FADE_FROM) / (FADE_TO - FADE_FROM);
-      var x = p.x + Math.sin(now / 1000 * p.sf + p.ph) * p.sw;
-      ctx.save();
-      ctx.globalAlpha = a;
-      ctx.translate(x, p.y);
-      ctx.rotate(p.rot);
-      ctx.scale(1, Math.abs(Math.cos(p.rot * 0.7)) * 0.7 + 0.3); // tumbling: the piece turns edge-on and back
-      ctx.fillStyle = p.c;
-      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-      ctx.restore();
-    }
-    if (live) requestAnimationFrame(frame);
-    else { ctx.clearRect(0, 0, W, H); parts = []; running = false; }
+    field.innerHTML = html;
+    layer.appendChild(field);
+    document.body.appendChild(layer);
+    setTimeout(function () { if (layer.parentNode) layer.parentNode.removeChild(layer); }, (last + 0.3) * 1000);
   }
   window.Confetti = { burst: burst };
 })();

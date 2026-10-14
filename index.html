@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&amp;family=Nunito:wght@600;700;800;900&amp;display=swap">
 <link rel="stylesheet" href="css/stage.css">
 <link rel="stylesheet" href="css/game.css">
+<link rel="stylesheet" href="css/confetti.css">
 <script>window.__resources = {}; /* template is inline below; the runtime need not re-fetch this page */</script>
 <script src="js/vendor/dc-runtime.js"></script>
 <script src="js/vendor/gsap.min.js"></script>
@@ -61,7 +62,7 @@
 <g sc-camel-transform="{{g.bDA.tf}}" sc-camel-display="{{g.bDA.d}}" pointer-events="none"><circle class="bead" r="6.5" style="--L: {{g.bDA.L}}px" fill="#fff" stroke="#f59e0b" stroke-width="3.5"></circle></g>
 <line class="fadein" sc-camel-x1="{{g.dAC.x1}}" sc-camel-y1="{{g.dAC.y1}}" sc-camel-x2="{{g.dAC.x2}}" sc-camel-y2="{{g.dAC.y2}}" sc-camel-display="{{g.dAC.d}}" stroke="#123b63" stroke-width="4" stroke-linecap="round" pointer-events="none"></line>
 <line class="fadein" sc-camel-x1="{{g.dBD.x1}}" sc-camel-y1="{{g.dBD.y1}}" sc-camel-x2="{{g.dBD.x2}}" sc-camel-y2="{{g.dBD.y2}}" sc-camel-display="{{g.dBD.d}}" stroke="#123b63" stroke-width="4" stroke-linecap="round" pointer-events="none"></line>
-<path sc-camel-d="{{g.htk.p}}" class="fadein" sc-camel-display="{{g.htk.d}}" fill="none" stroke="#2b7bd6" stroke-width="3" stroke-linecap="round" pointer-events="none"></path>
+<path sc-camel-d="{{g.htk.p}}" class="fadein ticks" sc-camel-display="{{g.htk.d}}" fill="none" stroke="#2b7bd6" stroke-width="3" stroke-linecap="round" pointer-events="none"></path>
 <circle class="fadein" sc-camel-cx="{{g.oDot.x}}" sc-camel-cy="{{g.oDot.y}}" r="6" sc-camel-display="{{g.oDot.d}}" fill="#fff" stroke="#123b63" stroke-width="3" pointer-events="none"></circle>
 <line class="{{g.hA.cls}}" pathLength="100" sc-camel-x1="{{g.hA.x1}}" sc-camel-y1="{{g.hA.y1}}" sc-camel-x2="{{g.hA.x2}}" sc-camel-y2="{{g.hA.y2}}" sc-camel-display="{{g.hA.d}}" style="stroke: {{g.hA.c}}" stroke-width="5" stroke-linecap="round" pointer-events="none"></line>
 <line class="{{g.hB.cls}}" pathLength="100" sc-camel-x1="{{g.hB.x1}}" sc-camel-y1="{{g.hB.y1}}" sc-camel-x2="{{g.hB.x2}}" sc-camel-y2="{{g.hB.y2}}" sc-camel-display="{{g.hB.d}}" style="stroke: {{g.hB.c}}" stroke-width="5" stroke-linecap="round" pointer-events="none"></line>
@@ -77,7 +78,7 @@
 <polygon class="outline-settle" sc-camel-points="{{g.poly}}" sc-camel-display="{{g.ol.d}}" fill="none" stroke="#e8287a" stroke-width="6" stroke-linejoin="round" pointer-events="none"></polygon>
 <path sc-camel-d="{{g.tape.p}}" sc-camel-display="{{g.tape.d}}" class="tape" fill="none" stroke="#f7c531" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"></path>
 <path sc-camel-d="{{g.tapeTk.p}}" sc-camel-display="{{g.tapeTk.d}}" fill="none" stroke="#6b4c0c" stroke-width="1.6" stroke-linecap="round"></path>
-<path sc-camel-d="{{g.tk.p}}" class="fadein" sc-camel-display="{{g.tk.d}}" fill="none" stroke="#8e44d6" stroke-width="3" stroke-linecap="round"></path>
+<path sc-camel-d="{{g.tk.p}}" class="fadein ticks" sc-camel-display="{{g.tk.d}}" fill="none" stroke="#8e44d6" stroke-width="3" stroke-linecap="round"></path>
 <path sc-camel-d="{{g.ch.p}}" class="fadein par-ch ch-a" sc-camel-display="{{g.ch.d}}" fill="none" stroke="#f08a24" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path>
 <path sc-camel-d="{{g.ch2.p}}" class="fadein par-ch ch-b" sc-camel-display="{{g.ch2.d}}" fill="none" stroke="#f08a24" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path>
 <path sc-camel-d="{{g.arw.p}}" sc-camel-display="{{g.arw.d}}" class="nudge" fill="none" stroke="#f08a24" stroke-width="3" stroke-dasharray="6 5" stroke-linecap="round"></path>
@@ -218,7 +219,7 @@
 
 <div class="chip-row{{chipRowCls}}" style="position: absolute; left: calc({{chipLeft}}px - 80px); top: {{chipTop}}px; width: 680px; height: 104px; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; justify-content: center; gap: 12px; pointer-events: none">
 <sc-for list="{{chips}}" as="cp" hint-placeholder-count="1">
-<div class="chip {{cp.k}}">{{cp.t}}</div>
+<div class="chip {{cp.k}}" aria-label="{{cp.t}}"><span class="chip-cap">{{cp.cap}}</span><span class="chip-ln"><span>{{cp.p0}}</span><span class="op">{{cp.s0}}</span><span>{{cp.p1}}</span><span class="op">{{cp.s1}}</span><span>{{cp.p2}}</span><span class="op">{{cp.s2}}</span><span>{{cp.p3}}</span><span class="op">{{cp.s3}}</span><span>{{cp.p4}}</span></span></div>
 </sc-for>
 </div>
 
@@ -262,7 +263,6 @@
 
 <div class="walker" aria-hidden="true" style="position: absolute; left: 0px; top: 0px; width: 120px; height: 120px; pointer-events: none; visibility: hidden; z-index: 12"><canvas width="512" height="512" style="width: 100%; height: 100%; display: block"></canvas></div>
 
-<canvas class="confetti" width="1280" height="720" aria-hidden="true" style="position: absolute; left: 0px; top: 0px; width: 1280px; height: 720px; pointer-events: none; z-index: 15"></canvas>
 
 <sc-if value="{{handOn}}" hint-placeholder-val="{{ false }}">
 <div class="{{hand.cls}}" style="left: {{hand.x}}px; top: {{hand.y}}px; --dx: {{hand.dx}}px; --dy: {{hand.dy}}px" aria-hidden="true">

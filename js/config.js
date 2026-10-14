@@ -3,15 +3,16 @@
 // =====================================================================
 const CONFIG = {
   pxPerCm: 60,                       // board scale: 1 cm = 60 board px
-  // shape palette, one for every screen. Colour carries meaning: a side takes its pair's colour only once that pair is
-  // known to be parallel - sideA (Aqua Pulse) = AB and CD, sideB (Fuchsia Beam) = AD and BC - and is slate until then
-  // (the plain quadrilateral, the trapezium's legs). fill = inside the shape; dot = corner rings; hl / hlRing (Volt Lime)
-  // = the highlighter band under a named side, its gliding bead, a named corner's ring, the build / outline glow.
-  // vA..vD = each corner's own colour (its angle arc, its half of a diagonal); once opposite angles / halves are shown
-  // equal, A and C share vA and B and D share vB.
-  // Applied on load as CSS variables (--pg-sideA, --pg-fill, --pg-hl, --pg-vA ...) for css/game.css.
-  palette: { sideA: '#0a7ea8', sideB: '#c2187a', slate: '#3b5573', fill: '#f7e4f2', dot: '#3b5573', hl: '#b8e62e', hlRing: '#5f9a0e',
-    vA: '#ea580c', vB: '#7c3aed', vC: '#0284c7', vD: '#059669' },
+  // shape palette (Honey Mist: warm, so the shape stands clear of the blue winter scene), one for every screen.
+  // line = every side and corner ring (highlight #D98A2B); slate = the trapezium's legs once its parallel pair is found
+  // (the parallelogram's are line-coloured again once BC is parallel to AD); fill = inside the shape (#FFE0A3);
+  // hl / hlRing = glow #FFBE55: the band under a named side, its gliding bead, a named corner's ring and the build /
+  // outline glow; ink = dark navy for marks on the lines (parallel chevrons, ticks) and card text; panel = the cards'
+  // (notation panels') face. vA..vD = each corner's own colour (its angle arc, its half of a diagonal), kept clear of
+  // the honey lines; once opposite angles / halves are shown equal, A and C share vA and B and D share vB.
+  // Applied on load as CSS variables (--pg-line, --pg-fill, --pg-hl, --pg-ink, --pg-panel, --pg-vA ...) for css/game.css.
+  palette: { line: '#D98A2B', slate: '#2f4566', fill: '#FFE0A3', dot: '#D98A2B', hl: '#FFBE55', hlRing: '#FFBE55', ink: '#1d2f52', panel: '#FFF8EC',
+    vA: '#e11d48', vB: '#7c3aed', vC: '#0284c7', vD: '#059669' },
   // opening shape: the storyboard's symmetric trapezium (pages 1-8): CD 6 cm, both legs 3 cm, base angles 70°, centred in
   // the panel. Dragging B until BC ∥ AD makes the parallelogram of the storyboard: AB = CD = 6 cm, AD = BC = 3 cm,
   // ∠A = ∠C = 110°, ∠B = ∠D = 70°
@@ -53,7 +54,11 @@ const CONFIG = {
   // spotlight screen: board moved/scaled from its usual spot (transform-origin = board top-left at 640,104).
   // Puts the shape (board centre ~260,228) at stage (560,358): mid-height, balanced against Swiftee on the right.
   // scene layout (screens 1-30): board nudged so the shape is centred in the right-hand panel; card row under it
-  scene: { boardX: 11, chipTop: 476, chipLeft: 616 },
+  // zoom: explanation and task screens show the shape this much bigger (as in the reference); questions and checkpoints
+  // (answer buttons / tiles under the shape) keep it at 1. The board glides between the two (0.7 s). Visual only: the
+  // shape's own geometry and its cm measurements are unchanged.
+  // zoomAt: where the zoomed shape's centre sits, in board px (stage = board + 651, 104): the panel's upper middle
+  scene: { boardX: 11, chipTop: 476, chipLeft: 616, zoom: 1.25, zoomAt: [225, 196] },
   // 'top' layout: board scaled and moved so the shape (board centre ~225,242) sits at stage (640,410)
   topLayout: { scale: 1.15, tx: -259, ty: 28 },
   spotlight: { scale: 1.35, tx: -431, ty: -54 },
