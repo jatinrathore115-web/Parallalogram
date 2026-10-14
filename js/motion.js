@@ -110,8 +110,9 @@
     // screen 4: the previous shape fades out, then the four sides fly in - top from above, right from the right,
     // bottom from below, left from the left - each a glowing stroke that settles into the outline, starting just
     // before the previous one lands; a glow settles on the closed outline, then the corner dots and the fill fade in
-    assemble() {
-      if (!G) return;
+    // onLand(i): side i has landed (its sound); onSettle(): the closed outline starts to glow
+    assemble(onLand, onSettle) {
+      if (!G) { [0, 1, 2, 3].forEach((i) => onLand && onLand(i)); if (onSettle) onSettle(); return; }
       const sides = [['.eAB', 0, -64], ['.eBC', 64, 0], ['.eCD', 0, 64], ['.eDA', -64, 0]];
       add(() => {
         const tl = G.timeline();
@@ -122,9 +123,11 @@
           // immediateRender off: the side keeps fading out with the old shape until its own entrance starts
           tl.fromTo(el, { opacity: 0, x: s[1], y: s[2], strokeWidth: intro() ? 5.5 : 7, filter: GLOW() },
             { opacity: 1, x: 0, y: 0, duration: reduced ? 0 : 0.55, ease: 'power3.out', immediateRender: false }, 0.45 + i * 0.6)
-            .to(el, { strokeWidth: intro() ? 3.5 : 5, filter: NOGLOW(), duration: 0.3, ease: 'sine.out' }, '>-0.05');
+            .to(el, { strokeWidth: intro() ? 3.5 : 5, filter: NOGLOW(), duration: 0.3, ease: 'sine.out' }, '>-0.05')
+            .call(() => onLand && onLand(i), null, 0.45 + i * 0.6 + (reduced ? 0 : 0.3)); // power3.out: ~95% there at 0.3 s
         });
-        tl.fromTo($('.outline-settle'), { opacity: 0 }, { opacity: 0.75, duration: 0.45, ease: 'sine.out' }, 3.0)
+        tl.call(() => onSettle && onSettle(), null, 3.0)
+          .fromTo($('.outline-settle'), { opacity: 0 }, { opacity: 0.75, duration: 0.45, ease: 'sine.out' }, 3.0)
           .to($('.outline-settle'), { opacity: 0, duration: 0.85, ease: 'sine.inOut' }, '>')
           .to(dots, { opacity: 1, duration: 0.45, ease: 'sine.out' }, 3.1)
           .to(fill, { opacity: 1, duration: 0.9, ease: 'sine.out' }, 3.1);

@@ -73,6 +73,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   }
   componentWillUnmount() { this.clearT(); this.cancelSpeech(); if (this.sw) this.sw.destroy(); }
   componentDidUpdate() {
+    this.markSounds();
     this.fitBubble();
     // screen list just opened: bring the current screen's thumbnail into view
     if (this.state.navOpen && !this.navShown && typeof document !== 'undefined') {
@@ -82,6 +83,23 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     this.navShown = !!this.state.navOpen;
   }
 
+  // sounds for marks that appear with the board: parallel chevrons / equal ticks (a tick as they pop on) and angle arcs
+  // (a soft pluck as each draws in, staggered like the arcs' own CSS delays .d0-.d3)
+  markSounds() {
+    const st = this.cur(), s = this.state;
+    if (!s.started || !st || st.cfu || st.grid || st.end) { this.marks = null; return; }
+    const f = st.fig ? { arcs: Object.keys(st.fig.angles || {}).join(''), ticks: st.fig.ticks || st.fig.hticks } : this.fl();
+    const pg = this.isPg(this.shapeP());
+    const m = { step: s.step, par: !!f.par, par2: !!(f.par2 || (st.task === 'dragB' && pg)), ticks: !!(f.ticks || f.hticks), arcs: (f.arcs || '').length };
+    const p = this.marks;
+    this.marks = m;
+    if (!p) return;
+    if ((m.par && !p.par) || (m.par2 && !p.par2) || (m.ticks && !p.ticks)) this.sfx('tick', { v: 0.9 });
+    if (m.arcs > p.arcs) { // arcs that stay on screen from one screen to the next do not draw in again
+      const N = window.Sfx ? Sfx.notes : [523.25, 659.25, 783.99, 1046.5];
+      for (let i = 0; i < Math.min(4, m.arcs); i++) this.sfx('pluck', { f: N[i], v: 0.7, delay: 0.15 * i });
+    }
+  }
   // ---------- screen list (top-left) ----------
   // The shape each screen expects, as if every screen before it was completed (for jumping straight to one).
   taskResult(st, P) {
@@ -239,7 +257,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     this.letterAt = at;
     const go = () => {
       this.setState({ vIn: Object.assign({}, this.state.vIn, { [k]: 1 }) });
-      Motion.letterIn(k, () => this.emphasize(['v' + k]));
+      Motion.letterIn(k, () => { this.emphasize(['v' + k]); this.sfx('pop', { f: (window.Sfx ? Sfx.notes : [523.25, 659.25, 783.99, 1046.5, 1318.5])['ABCD'.indexOf(k)], v: 0.75 }); });
     };
     if (at > now) Motion.wait((at - now) / 1000, go); else go();
   }
@@ -253,10 +271,12 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       this.setState({ emph: e });
     }, CONFIG.emph.holdMs);
   }
-  sfx(kind) {
+  // o: { f: pitch Hz, v: volume x, delay: s } for the synthesised effects (js/sfx.js)
+  sfx(kind, o) {
     if (this.state.muted) return;
     if (CONFIG.sounds && CONFIG.sounds[kind] && this.playSound(kind)) return;
     if (!this.actx) return;
+    if (window.Sfx && Sfx.has(kind)) { Sfx.play(this.actx, kind, o); return; }
     const ctx = this.actx;
     try {
       const now = ctx.currentTime;
@@ -574,13 +594,16 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   runCue(c) {
     const tok = this.stepTok, P = this.state.P;
     if (c.chip) this.addChips([c.chip]);
+    if (c.glow) this.sfx('glint', { v: 0.9 }); // a side (or the outline) lights up on its word
     if (c.glow !== undefined) this.setState({ glow: c.glow, chipHi: c.hi || null });
     if (c.pulse) Motion.pop((P.A.x + P.B.x + P.C.x + P.D.x) / 4, (P.A.y + P.B.y + P.C.y + P.D.y) / 4);
     if (c.ms) this.tm(() => { if (tok === this.stepTok) this.setState({ glow: null, chipHi: null }); }, c.ms);
   }
   addChips(cs) {
-    const have = this.state.chips.map((c) => c.t);
-    this.setState({ chips: this.state.chips.concat(cs.filter((c) => have.indexOf(c.t) < 0)) });
+    const have = this.state.chips.map((c) => c.t), add = cs.filter((c) => have.indexOf(c.t) < 0);
+    // a card arrives: the shape's name with a chime, any other card with a soft pop
+    if (add.length) this.sfx(add.some((c) => /\bname\b/.test(c.k)) ? 'chime' : 'pop', { f: 880, v: 0.6 });
+    this.setState({ chips: this.state.chips.concat(add) });
   }
   replay() {
     if (!this.state.started || !this.curLine) return;
@@ -975,13 +998,17 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     const total = this.dist(P.D, P.A) + this.dist(P.A, P.B) + this.dist(P.B, P.C) + this.dist(P.C, P.D);
     const ease = (t) => -(Math.cos(Math.PI * t) - 1) / 2; // sine in-out: eased at the start and the end only
     const B = this.bld = { t0: performance.now(), dur: ms || total / Bc.pxPerMs, from: 0, total: total };
+    const l1 = this.dist(P.D, P.A), l2 = l1 + this.dist(P.A, P.B), corners = [l1, l2, l2 + this.dist(P.B, P.C)]; // A, B, C along the pen's path
     const frame = () => {
       if (tok !== this.stepTok || this.bld !== B) return;
       const t = Math.min(1, (performance.now() - B.t0) / B.dur), d = B.from + (total - B.from) * ease(t);
+      // the pen reaches a corner (its dot appears): a soft tick
+      const prevD = (this.state.build && this.state.build.d) || 0;
+      corners.forEach((cd, i) => { if (prevD < cd && d >= cd) this.sfx('tick', { f: (window.Sfx ? Sfx.notes : [523.25, 659.25, 783.99, 1046.5, 1318.5])[i + 1] / 2, v: 0.8 }); });
       if (t < 1) { this.setState({ build: { d: Math.max(0.001, d), done: false } }); this.tm(frame, 16); return; }
       this.bld = null;
       this.setState({ build: { d: total, done: true, settle: true, fill: true }, trace: null }, () => Motion.settle());
-      this.sfx('pop'); // the outline closes: a soft click as the fill fades in
+      this.sfx('shimmer', { v: 0.9 }); // the outline closes: a soft bell shimmer as the glow settles and the fill fades in
       this.tm(() => { if (tok === this.stepTok) this.setState({ build: { d: total, done: true, settle: false, fill: true } }); }, Bc.settleMs);
     };
     frame();
@@ -1021,12 +1048,13 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       Motion.enterShape((P.A.x + P.B.x + P.C.x + P.D.x) / 4, (P.A.y + P.B.y + P.C.y + P.D.y) / 4);
       if (st.enterChips) this.tm(() => this.addChips(st.enterChips), Motion.reduced ? 0 : 1150);
     }
-    if (st.sideNums) Motion.sideNums((i) => this.emphasize([['DA', 'AB', 'BC', 'CD'][i]]));
+    if (st.sideNums) Motion.sideNums((i) => { this.emphasize([['DA', 'AB', 'BC', 'CD'][i]]); this.sfx('pop', { f: (window.Sfx ? Sfx.notes : [523.25, 659.25, 783.99, 1046.5, 1318.5])[i], v: 0.8 }); });
     if (st.letterIn) Motion.fadeOut('.tag.snum, .tag.vlab'); // numbers and old letters leave softly; letters return on cue
     if (st.assemble) {
       const P = this.state.P;
       Motion.holdSmall((P.A.x + P.B.x + P.C.x + P.D.x) / 4, (P.A.y + P.B.y + P.C.y + P.D.y) / 4);
-      Motion.assemble();
+      // each side lands with a pop, rising C E G C; the outline glow settles with a shimmer
+      Motion.assemble((i) => this.sfx('pop', { f: (window.Sfx ? Sfx.notes : [523.25, 659.25, 783.99, 1046.5, 1318.5])[i] }), () => this.sfx('shimmer', { v: 0.9 }));
     }
   }
   autoMeasure() {

@@ -3,15 +3,15 @@
 // =====================================================================
 const CONFIG = {
   pxPerCm: 60,                       // board scale: 1 cm = 60 board px
-  // shape palette (Honey Mist: warm, so the shape stands clear of the blue winter scene), one for every screen.
-  // line = every side and corner ring (highlight #D98A2B); slate = the trapezium's legs once its parallel pair is found
-  // (the parallelogram's are line-coloured again once BC is parallel to AD); fill = inside the shape (#FFE0A3);
-  // hl / hlRing = glow #FFBE55: the band under a named side, its gliding bead, a named corner's ring and the build /
+  // shape palette (Soft Tangerine: a calm but noticeable orange, so the shape stands clear of the blue winter scene), one for every screen.
+  // line = every side and corner ring (highlight #DA7E20); slate = the trapezium's legs once its parallel pair is found
+  // (the parallelogram's are line-coloured again once BC is parallel to AD); fill = inside the shape (#FFD2A0);
+  // hl / hlRing = glow #FFAF53: the band under a named side, its gliding bead, a named corner's ring and the build /
   // outline glow; ink = dark navy for marks on the lines (parallel chevrons, ticks) and card text; panel = the cards'
   // (notation panels') face. vA..vD = each corner's own colour (its angle arc, its half of a diagonal), kept clear of
   // the honey lines; once opposite angles / halves are shown equal, A and C share vA and B and D share vB.
   // Applied on load as CSS variables (--pg-line, --pg-fill, --pg-hl, --pg-ink, --pg-panel, --pg-vA ...) for css/game.css.
-  palette: { line: '#D98A2B', slate: '#2f4566', fill: '#FFE0A3', dot: '#D98A2B', hl: '#FFBE55', hlRing: '#FFBE55', ink: '#1d2f52', panel: '#FFF8EC',
+  palette: { line: '#DA7E20', slate: '#2f4566', fill: '#FFD2A0', dot: '#DA7E20', hl: '#FFAF53', hlRing: '#FFAF53', ink: '#1d2f52', panel: '#FFF8EC',
     vA: '#e11d48', vB: '#7c3aed', vC: '#0284c7', vD: '#059669' },
   // opening shape: the storyboard's symmetric trapezium (pages 1-8): CD 6 cm, both legs 3 cm, base angles 70°, centred in
   // the panel. Dragging B until BC ∥ AD makes the parallelogram of the storyboard: AB = CD = 6 cm, AD = BC = 3 cm,

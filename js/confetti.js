@@ -11,8 +11,8 @@
 // =====================================================================
 (function () {
   var N = 110;                       // pieces per burst
-  // the lesson's Honey Mist tones with festive accents that pop on the blue scene
-  var COLORS = ['#D98A2B', '#FFBE55', '#FFE0A3', '#2EC4E6', '#7C3AED', '#E11D48', '#8BD64B', '#3B82F6'];
+  // the lesson's Soft Tangerine tones with festive accents that pop on the blue scene
+  var COLORS = ['#DA7E20', '#FFAF53', '#FFD2A0', '#2EC4E6', '#7C3AED', '#E11D48', '#8BD64B', '#3B82F6'];
   var SHAPES = [['sq', 30], ['rc', 34], ['ln', 20], ['st', 16]]; // [class, weight]
   var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var rnd = function (a, b) { return a + Math.random() * (b - a); };

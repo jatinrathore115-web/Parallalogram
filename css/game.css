@@ -51,10 +51,10 @@ a{color:#123b63}a:hover{color:#0b2742}
 .chip.good{background:#e2f7e6;color:#1d6b35;border-color:#8fd3a1}
 .chip.bad{background:#fde6e2;color:#9b2c1f;border-color:#f2a99d}
 @keyframes chipIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
-.edge{transition:stroke .35s ease,stroke-width .3s cubic-bezier(.3,0,.3,1),opacity .3s ease}
+.edge{transition:stroke .35s ease,stroke-width .3s cubic-bezier(.3,0,.3,1),stroke-opacity .3s ease}
 /* screen 4: a slanted side flashes once (thicker, soft highlighter glow) before its dotted extension draws */
 .edge.flash{animation:edgeFlash .8s ease-in-out}
-@keyframes edgeFlash{0%,100%{stroke-width:5px;filter:none}50%{stroke-width:9px;filter:drop-shadow(0 0 6px var(--pg-hl,#FFBE55))}}
+@keyframes edgeFlash{0%,100%{stroke-width:5px;filter:none}50%{stroke-width:9px;filter:drop-shadow(0 0 6px var(--pg-hl,#FFAF53))}}
 @media (prefers-reduced-motion: reduce){.edge.flash{animation:none;stroke-width:8px}}
 .arc{stroke-dasharray:100 100;animation:arcIn .5s ease-out backwards}
 .d1{animation-delay:.15s}
@@ -149,7 +149,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .board{transform-origin:0 0;transition:transform .7s cubic-bezier(.22,.8,.3,1)}
 /* (the board <svg> takes its transform-origin/transition inline: the runtime does not bind class on the svg root) */
 .shape-fill.spot{animation:shapePulse 2.4s ease-in-out .7s infinite}
-@keyframes shapePulse{0%,100%{filter:drop-shadow(0 0 0 rgba(255,190,85,0))}50%{filter:drop-shadow(0 0 14px rgba(255,190,85,.55))}}
+@keyframes shapePulse{0%,100%{filter:drop-shadow(0 0 0 rgba(255,175,83,0))}50%{filter:drop-shadow(0 0 14px rgba(255,175,83,.55))}}
 .swiftee{left:130px;animation:swHome .45s ease-out}
 .swiftee.spot{left:900px;animation:swSpot .5s ease-out}
 @keyframes swHome{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -278,13 +278,13 @@ a{color:#123b63}a:hover{color:#0b2742}
 .edge.lit.emph{stroke-width:8px}
 /* screen 4 leg trace: a soft pink glow drawn on along the leg (D->A, C->B); at the corner it fades off the side while
    the dotted extension (xleg) draws on from the corner */
-.trace{stroke:var(--pg-line,#D98A2B);opacity:.95;filter:drop-shadow(0 0 4px rgba(255,190,85,.7));transition:opacity .35s ease}
+.trace{stroke:var(--pg-line,#DA7E20);opacity:.95;filter:drop-shadow(0 0 4px rgba(255,175,83,.7));transition:opacity .35s ease}
 .trace.out{opacity:0}
 .xleg{animation:xlegIn .2s ease both}
 @keyframes xlegIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){.xleg{animation:none}.trace{transition:none}}
 /* settling glow round a finished outline (screens 1 and 4) */
-.outline-settle{opacity:0;stroke:var(--pg-hl,#FFBE55);stroke-width:12px;filter:drop-shadow(0 0 6px rgba(255,190,85,.7))} /* faded in/out by GSAP (js/motion.js) */
+.outline-settle{opacity:0;stroke:var(--pg-hl,#FFAF53);stroke-width:12px;filter:drop-shadow(0 0 6px rgba(255,175,83,.7))} /* faded in/out by GSAP (js/motion.js) */
 /* screen 2 side numbers: bold plain numerals (no box); their entrance is GSAP (Motion.sideNums) */
 .tag.snum{background:none;box-shadow:none;padding:0;font-family:'Nunito',system-ui,sans-serif;font-weight:900;font-size:26px;color:#123b63}
 
@@ -370,7 +370,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .stage.skin-intro .bubble-tail path{fill:#fff;stroke:none}
 .stage.skin-intro .edge{stroke-width:3.5px}
 .stage.skin-intro .trace{stroke-width:4.5px}
-.shape-fill{fill:var(--pg-fill,#FFE0A3);transition:fill .45s ease}
+.shape-fill{fill:var(--pg-fill,#FFD2A0);transition:fill .45s ease}
 .stage.skin-intro .tag.snum{color:#16263a}
 /* screen 3: the shape's name is a plain caption just under the shape (a figure label, not a card) */
 .stage.skin-intro .chip.name{background:none;border:none;box-shadow:none;padding:0;position:relative;top:-62px;font-weight:800;font-size:30px;color:#16263a}
@@ -387,7 +387,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .chip.brk{flex-basis:100%;height:0;padding:0;margin:0;border:0;background:none;box-shadow:none;animation:none}
 /* word cues (cue-pulse screens): the pair being said pulses gently in its own colour, and its card lifts softly */
 .chip{transition:transform .3s cubic-bezier(.3,0,.2,1),box-shadow .3s ease,border-color .3s ease}
-.chip.hi{transform:translateY(-4px) scale(1.06);border-color:var(--pg-hlRing,#FFBE55);box-shadow:0 8px 18px rgba(255,190,85,.3)}
+.chip.hi{transform:translateY(-4px) scale(1.06);border-color:var(--pg-hlRing,#FFAF53);box-shadow:0 8px 18px rgba(255,175,83,.3)}
 @media (prefers-reduced-motion: reduce){.chip{transition:none}}
 .chip-row.top{align-content:flex-start!important}
 /* tight corners: the angle label steps down a size so it still fits inside the shape (layout in renderVals) */
@@ -398,12 +398,13 @@ a{color:#123b63}a:hover{color:#0b2742}
    A side being named or worked on: a soft band draws on under it (.hl, pathLength 100), a ring bead glides back and
    forth along it (.bead), and while only some sides are lit the others dim (.edge.dim). The build trail (screen 1) is
    the same band following the pen; it fades out (.out) as the fill comes in. A named corner grows into a ring (engine). */
-.hl{stroke:var(--pg-hl,#FFBE55);stroke-width:13px;opacity:.85;stroke-dasharray:100 100;animation:hlIn .4s cubic-bezier(.3,0,.2,1) backwards}
+.hl{stroke:var(--pg-hl,#FFAF53);stroke-width:13px;opacity:.85;stroke-dasharray:100 100;animation:hlIn .4s cubic-bezier(.3,0,.2,1) backwards}
 @keyframes hlIn{from{stroke-dashoffset:100;opacity:0}to{stroke-dashoffset:0;opacity:.85}}
 .hl.trail{stroke-dasharray:none;animation:none;transition:opacity .9s ease}
 .hl.trail.out{opacity:0}
-.edge.dim{opacity:.38}
-.bead{stroke:var(--pg-hlRing,#FFBE55);filter:drop-shadow(0 1px 2px rgba(18,59,99,.25));animation:beadRun 1.6s ease-in-out infinite alternate}
+/* dim with stroke-opacity: GSAP animates opacity on the sides (entrances), and a CSS opacity transition would lag them */
+.edge.dim{stroke-opacity:.38}
+.bead{stroke:var(--pg-hlRing,#FFAF53);filter:drop-shadow(0 1px 2px rgba(18,59,99,.25));animation:beadRun 1.6s ease-in-out infinite alternate}
 @keyframes beadRun{from{transform:translateX(0)}to{transform:translateX(var(--L))}}
 .vdot{transition:r .3s cubic-bezier(.3,0,.3,1),stroke .25s ease,stroke-width .25s ease}
 @media (prefers-reduced-motion: reduce){.hl{animation:none}.hl.trail{transition:none}.bead{animation:none;transform:translateX(calc(var(--L) / 2))}.vdot{transition:none}}
@@ -419,26 +420,26 @@ a{color:#123b63}a:hover{color:#0b2742}
 @media (prefers-reduced-motion: reduce){.hl.flash{animation:none;opacity:.85}.arc,.tag.alab{transition:none}}
 /* pair cards (AB ∥ CD, AB = CD / AD ∥ BC, AD = BC) carry their sides' colour, as in the colour key */
 
-.chip.pairA.hi,.chip.pairB.hi{border-color:var(--pg-hlRing,#FFBE55)}
+.chip.pairA.hi,.chip.pairB.hi{border-color:var(--pg-hlRing,#FFAF53)}
 
-/* ===== Fuchsia Beam (CONFIG.palette): lines #D98A2B, fill #FFE0A3, glow #FFBE55, notation panels #FFF8EC ===== */
+/* ===== Fuchsia Beam (CONFIG.palette): lines #DA7E20, fill #FFD2A0, glow #FFAF53, notation panels #FFF8EC ===== */
 .shape-fill{fill-opacity:.92}
 .hl{opacity:.6}
 @keyframes hlIn{from{stroke-dashoffset:100;opacity:0}to{stroke-dashoffset:0;opacity:.6}}
 @keyframes hlFlash{0%{stroke-dashoffset:100;opacity:0}35%{stroke-dashoffset:0;opacity:.6}70%{opacity:.6}100%{stroke-dashoffset:0;opacity:0}}
 .ticks{stroke:var(--pg-ink,#1d2f52)}
-.ltag,.mtag{border-color:var(--pg-line,#D98A2B);color:var(--pg-ink,#1d2f52);background:var(--pg-panel,#FFF8EC)}
+.ltag,.mtag{border-color:var(--pg-line,#DA7E20);color:var(--pg-ink,#1d2f52);background:var(--pg-panel,#FFF8EC)}
 .bead{stroke-width:4px}
 /* cards = notation panels: soft pink face, highlight border, dark navy type, relation signs in the highlight colour,
    and a small caption naming the property (Parallel sides, Equal angles ...) */
-.stage .chip,.stage .chip.gold,.stage .chip.name{background:var(--pg-panel,#FFF8EC);border:2.5px solid var(--pg-line,#D98A2B);color:var(--pg-ink,#1d2f52);
-  box-shadow:0 4px 12px rgba(217,138,43,.14);display:flex;flex-direction:column;align-items:center;justify-content:center}
-.stage .chip.name{border-width:3.5px;box-shadow:0 6px 16px rgba(217,138,43,.22)}
+.stage .chip,.stage .chip.gold,.stage .chip.name{background:var(--pg-panel,#FFF8EC);border:2.5px solid var(--pg-line,#DA7E20);color:var(--pg-ink,#1d2f52);
+  box-shadow:0 4px 12px rgba(218,126,32,.14);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.stage .chip.name{border-width:3.5px;box-shadow:0 6px 16px rgba(218,126,32,.22)}
 .chip-cap{display:none;font-family:'Nunito',system-ui,sans-serif;font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;line-height:1;color:#6c7895;margin:1px 0 3px}
 .chip.hascap .chip-cap{display:block}
 .chip-ln{white-space:pre}
-.chip-ln .op{color:var(--pg-line,#D98A2B);font-weight:900}
-.stage .chip.hi{border-color:var(--pg-hl,#FFBE55);box-shadow:0 0 0 4px rgba(255,190,85,.22),0 8px 18px rgba(217,138,43,.25)}
+.chip-ln .op{color:var(--pg-line,#DA7E20);font-weight:900}
+.stage .chip.hi{border-color:var(--pg-hl,#FFAF53);box-shadow:0 0 0 4px rgba(255,175,83,.22),0 8px 18px rgba(218,126,32,.25)}
 .stage.skin-intro .chip.name{background:none;border:none;box-shadow:none}
 /* the row-break item between card rows (chipRows) is not a card */
 .stage .chip.brk{flex-basis:100%;height:0;padding:0;margin:0;border:0;background:none;box-shadow:none;animation:none}
