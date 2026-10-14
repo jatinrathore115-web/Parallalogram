@@ -1,0 +1,81 @@
+// =====================================================================
+// VOICE — recorded voice-over player (clips in assets/vo/, map in js/vo_lines.js, see dev/VOICEOVER.md).
+// One reused <audio> element. A line is looked up by the exact plain text the bubble shows (a voice-only line by its
+// spoken text). The engine's say() (js/game-engine.js) uses it as the clock for the line; when a clip is missing or
+// cannot play, say() falls back to the device's built-in voice.
+// Off when the browser cannot play Ogg Opus (older Safari / iPad) or with ?vo=0. ?speed=2 plays clips faster (QA).
+// =====================================================================
+(function () {
+  const q = (k) => { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } };
+  let el = null;
+  try { el = new Audio(); el.preload = 'auto'; } catch (e) { el = null; }
+  let canOgg = false;
+  try { canOgg = !!(el && el.canPlayType('audio/ogg; codecs="opus"')); } catch (e) {}
+  const lines = typeof VO_LINES !== 'undefined' ? VO_LINES : {};
+  const src = (id) => 'assets/vo/' + id + '.ogg';
+  let tok = 0, played = false, unlocked = false;
+
+  const VO = {
+    on: !!el && canOgg && q('vo') !== '0' && Object.keys(lines).length > 0,
+    rate: Math.max(0.5, Math.min(4, parseFloat(q('speed')) || 1)),
+    has(key) { return VO.on && !!lines[key]; },
+    seconds(key) { const v = lines[key]; return v ? v[1] : 0; },
+    // the first tap (Start): play muted, then pause - tablets refuse audio until an element has played in a gesture
+    unlock() {
+      if (!VO.on || unlocked || played) return;
+      unlocked = true;
+      const t = tok, first = lines[Object.keys(lines)[0]];
+      try {
+        el.muted = true; el.src = src(first[0]);
+        const p = el.play();
+        const done = () => { if (t === tok && !played) { try { el.pause(); } catch (e) {} } el.muted = false; };
+        if (p && p.then) p.then(done, done); else done();
+      } catch (e) { el.muted = false; }
+    },
+    // plays a line's clip; returns false at once if there is none. cb: start() as the voice starts, end() as it ends,
+    // fail() if it never started (missing file, play() refused) - the caller then speaks the line another way.
+    play(key, cb) {
+      if (!VO.has(key)) return false;
+      VO.stop();
+      const t = ++tok, live = () => t === tok;
+      let started = false;
+      played = true;
+      el.muted = false;
+      el.onplaying = () => { if (live() && !started) { started = true; if (cb.start) cb.start(); } };
+      el.onended = () => { if (live()) { tok++; if (cb.end) cb.end(); } };
+      el.onerror = () => { if (!live()) return; tok++; if (started) { if (cb.end) cb.end(); } else if (cb.fail) cb.fail(); };
+      try {
+        el.src = src(lines[key][0]);
+        el.playbackRate = VO.rate;
+        const p = el.play();
+        if (p && p.catch) p.catch(() => { if (live() && !started) { tok++; if (cb.fail) cb.fail(); } });
+      } catch (e) { tok++; if (cb.fail) cb.fail(); }
+      return true;
+    },
+    // where the clip is now (s), for the line's timers; -1 when nothing is playing
+    now() { return el && !el.paused ? el.currentTime : -1; },
+    stop() {
+      tok++;
+      if (!el) return;
+      el.onplaying = el.onended = el.onerror = null;
+      try { el.pause(); } catch (e) {}
+    },
+    // after Start: fetch every clip quietly, one at a time, so each is ready when its line comes
+    prefetch() {
+      if (!VO.on || VO.prefetching) return;
+      VO.prefetching = true;
+      const ids = Object.keys(lines).map((k) => lines[k][0]);
+      const next = (i) => {
+        if (i >= ids.length) return;
+        let a; try { a = new Audio(); } catch (e) { return; }
+        a.preload = 'auto'; a.muted = true;
+        let gone = false;
+        const go = () => { if (gone) return; gone = true; a.removeAttribute('src'); setTimeout(() => next(i + 1), 30); };
+        a.oncanplaythrough = go; a.onerror = go; setTimeout(go, 8000);
+        a.src = src(ids[i]); try { a.load(); } catch (e) { go(); }
+      };
+      next(0);
+    }
+  };
+  window.VO = VO;
+})();

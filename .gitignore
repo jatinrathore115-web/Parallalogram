@@ -1,2 +1,5 @@
 # browser "Save Page As" dump of a GitHub page, not project assets
 swiftee-assets/*at main*
+
+# screen recordings / reference videos (too large for GitHub)
+*.mp4

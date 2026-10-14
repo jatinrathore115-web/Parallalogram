@@ -51,10 +51,10 @@ a{color:#123b63}a:hover{color:#0b2742}
 .chip.good{background:#e2f7e6;color:#1d6b35;border-color:#8fd3a1}
 .chip.bad{background:#fde6e2;color:#9b2c1f;border-color:#f2a99d}
 @keyframes chipIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
-.edge{transition:stroke .35s ease,stroke-width .3s cubic-bezier(.3,0,.3,1)}
-/* screen 4: a slanted side flashes once (thicker, soft pink glow) before its dotted extension draws */
+.edge{transition:stroke .35s ease,stroke-width .3s cubic-bezier(.3,0,.3,1),opacity .3s ease}
+/* screen 4: a slanted side flashes once (thicker, soft highlighter glow) before its dotted extension draws */
 .edge.flash{animation:edgeFlash .8s ease-in-out}
-@keyframes edgeFlash{0%,100%{stroke-width:5px;filter:none}50%{stroke-width:9px;filter:drop-shadow(0 0 6px rgba(232,40,122,.75))}}
+@keyframes edgeFlash{0%,100%{stroke-width:5px;filter:none}50%{stroke-width:9px;filter:drop-shadow(0 0 6px var(--pg-hl,#fbbf24))}}
 @media (prefers-reduced-motion: reduce){.edge.flash{animation:none;stroke-width:8px}}
 .arc{stroke-dasharray:100 100;animation:arcIn .5s ease-out backwards}
 .d1{animation-delay:.15s}
@@ -149,17 +149,13 @@ a{color:#123b63}a:hover{color:#0b2742}
 .board{transform-origin:0 0;transition:transform .7s cubic-bezier(.22,.8,.3,1)}
 /* (the board <svg> takes its transform-origin/transition inline: the runtime does not bind class on the svg root) */
 .shape-fill.spot{animation:shapePulse 2.4s ease-in-out .7s infinite}
-@keyframes shapePulse{0%,100%{fill:rgba(229,205,234,.92);filter:drop-shadow(0 0 0 rgba(232,40,122,0))}50%{fill:rgba(240,176,214,.95);filter:drop-shadow(0 0 14px rgba(232,40,122,.4))}}
+@keyframes shapePulse{0%,100%{filter:drop-shadow(0 0 0 rgba(251,191,36,0))}50%{filter:drop-shadow(0 0 14px rgba(251,191,36,.55))}}
 .swiftee{left:130px;animation:swHome .45s ease-out}
 .swiftee.spot{left:900px;animation:swSpot .5s ease-out}
 @keyframes swHome{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes swSpot{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .bubble.gone{display:none}
 @media (prefers-reduced-motion: reduce){.board{transition:none}.shape-fill.spot,.swiftee,.swiftee.spot{animation:none}}
-/* Leg highlight ("These two sides look like they will meet"): a yellow band under AD and BC that gently breathes */
-.leg-glow{stroke-opacity:.9;animation:legGlow 1.8s ease-in-out infinite}
-@keyframes legGlow{0%,100%{stroke-opacity:.78;stroke-width:20px}50%{stroke-opacity:1;stroke-width:25px}}
-@media (prefers-reduced-motion: reduce){.leg-glow{animation:none;stroke-opacity:.8}}
 /* Bubble leaving (focus screens): fade and sink slightly, then stop taking clicks */
 .bubble{transition:opacity .35s ease,transform .35s ease,visibility 0s}
 .bubble.away{opacity:0;transform:translateY(8px) scale(.96);visibility:hidden;transition:opacity .35s ease,transform .35s ease,visibility 0s .35s}
@@ -182,9 +178,6 @@ a{color:#123b63}a:hover{color:#0b2742}
 @media (prefers-reduced-motion: reduce){.navbtn{transition:none}}
 /* forced line break inside the bubble (\n in a line) */
 .w.brk{flex-basis:100%;height:0;opacity:0}
-.leg-glow{animation:legGlowIn .35s ease-out,legGlow 1.8s ease-in-out .35s infinite}
-@keyframes legGlowIn{from{stroke-opacity:0;stroke-width:12px}to{stroke-opacity:.78;stroke-width:20px}}
-@media (prefers-reduced-motion: reduce){.leg-glow{animation:none}}
 /* Base / Leg pill labels (screens 11-12): both pills of a pair fade and drop in together with the voice */
 .callout{animation:calloutIn .4s ease-out;filter:drop-shadow(0 3px 6px rgba(18,59,99,.16))}
 @keyframes calloutIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
@@ -205,8 +198,6 @@ a{color:#123b63}a:hover{color:#0b2742}
 .thumb.cur .thumb-n{background:#d9640a}
 /* thumbnail capture (tools/build-thumbs.js) hides the chrome */
 .thumbs-capture .screens-btn,.thumbs-capture .topnav,.thumbs-capture .hand-nudge{display:none!important}
-/* measured side: the band stops pulsing and settles to a soft, steady yellow */
-.leg-glow.done{animation:none;stroke-opacity:.5;stroke-width:18px;transition:stroke-opacity .4s ease}
 /* hand-broken lines (\n): keep exactly those lines; the bubble grows to the longest one instead of re-wrapping */
 .bubble.manual{max-width:420px}
 .bubble.manual .bubble-text{flex-wrap:wrap}
@@ -282,18 +273,18 @@ a{color:#123b63}a:hover{color:#0b2742}
 .opts-in .opt.bad{animation:shake .4s ease}
 @media (prefers-reduced-motion: reduce){.qshape{transition:none}.opts-in .opt{animation:none}}
 .opts-in .opt.nudged{animation:optNudge 1.5s ease-in-out 3}
-/* emphasised side (no yellow band anywhere): the side itself goes a little bolder in its own colour */
-.edge.lit{stroke-width:8px}
-.edge.lit.emph{stroke-width:10px}
+/* highlighted side: a touch bolder in its own colour, over its highlighter band (.hl) */
+.edge.lit{stroke-width:6px}
+.edge.lit.emph{stroke-width:8px}
 /* screen 4 leg trace: a soft pink glow drawn on along the leg (D->A, C->B); at the corner it fades off the side while
    the dotted extension (xleg) draws on from the corner */
-.trace{opacity:.95;filter:drop-shadow(0 0 4px rgba(232,40,122,.45));transition:opacity .35s ease}
+.trace{stroke:var(--pg-sideA,#4338ca);opacity:.95;filter:drop-shadow(0 0 4px rgba(251,191,36,.6));transition:opacity .35s ease}
 .trace.out{opacity:0}
 .xleg{animation:xlegIn .2s ease both}
 @keyframes xlegIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){.xleg{animation:none}.trace{transition:none}}
 /* settling glow round a finished outline (screens 1 and 4) */
-.outline-settle{opacity:0;filter:drop-shadow(0 0 7px rgba(232,40,122,.55))} /* faded in/out by GSAP (js/motion.js) */
+.outline-settle{opacity:0;stroke:var(--pg-hl,#fbbf24);stroke-width:12px;filter:drop-shadow(0 0 6px rgba(251,191,36,.6))} /* faded in/out by GSAP (js/motion.js) */
 /* screen 2 side numbers: bold plain numerals (no box); their entrance is GSAP (Motion.sideNums) */
 .tag.snum{background:none;box-shadow:none;padding:0;font-family:'Nunito',system-ui,sans-serif;font-weight:900;font-size:26px;color:#123b63}
 
@@ -376,11 +367,9 @@ a{color:#123b63}a:hover{color:#0b2742}
 .stage.skin-intro .bubble-text{color:#16263a}
 .stage.skin-intro .bubble .bubble-tail{margin-top:-2px;filter:drop-shadow(0 5px 4px rgba(18,59,99,.08))}
 .stage.skin-intro .bubble-tail path{fill:#fff;stroke:none}
-.stage.skin-intro .shape-fill{fill:rgba(158,196,234,.92)}
 .stage.skin-intro .edge{stroke-width:3.5px}
-.stage.skin-intro .trace{stroke:#2456d6;stroke-width:4.5px;filter:drop-shadow(0 0 4px rgba(36,86,214,.4))}
-.stage.skin-intro .outline-settle{stroke:#2456d6;stroke-width:4px;filter:drop-shadow(0 0 7px rgba(36,86,214,.45))}
-.shape-fill{transition:fill .45s ease}
+.stage.skin-intro .trace{stroke-width:4.5px}
+.shape-fill{fill:var(--pg-fill,#fff1f6);transition:fill .45s ease}
 .stage.skin-intro .tag.snum{color:#16263a}
 /* screen 3: the shape's name is a plain caption just under the shape (a figure label, not a card) */
 .stage.skin-intro .chip.name{background:none;border:none;box-shadow:none;padding:0;position:relative;top:-62px;font-weight:800;font-size:30px;color:#16263a}
@@ -397,13 +386,23 @@ a{color:#123b63}a:hover{color:#0b2742}
 .chip.brk{flex-basis:100%;height:0;padding:0;margin:0;border:0;background:none;box-shadow:none;animation:none}
 /* word cues (cue-pulse screens): the pair being said pulses gently in its own colour, and its card lifts softly */
 .chip{transition:transform .3s cubic-bezier(.3,0,.2,1),box-shadow .3s ease,border-color .3s ease}
-.chip.hi{transform:translateY(-4px) scale(1.06);border-color:#e8287a;box-shadow:0 8px 18px rgba(232,40,122,.22)}
-.stage.cue-pulse .edge.lit{animation:cuePulse 1.1s ease-in-out infinite}
-@keyframes cuePulse{0%,100%{stroke-width:7px;filter:drop-shadow(0 0 0 rgba(232,40,122,0))}50%{stroke-width:9px;filter:drop-shadow(0 0 6px rgba(232,40,122,.5))}}
-@media (prefers-reduced-motion: reduce){.chip{transition:none}.stage.cue-pulse .edge.lit{animation:none}}
+.chip.hi{transform:translateY(-4px) scale(1.06);border-color:var(--pg-hlRing,#f59e0b);box-shadow:0 8px 18px rgba(245,158,11,.28)}
+@media (prefers-reduced-motion: reduce){.chip{transition:none}}
 .chip-row.top{align-content:flex-start!important}
 /* tight corners: the angle label steps down a size so it still fits inside the shape (layout in renderVals) */
 .alab.sm{font-size:14px;padding:1px 5px}
-/* intro skin (screens 1-8): word cues pulse the thin blue outline in blue, scaled to its 3.5 px stroke */
-.stage.skin-intro.cue-pulse .edge.lit{animation-name:cuePulseIntro}
-@keyframes cuePulseIntro{0%,100%{stroke-width:4.5px;filter:drop-shadow(0 0 0 rgba(36,86,214,0))}50%{stroke-width:6px;filter:drop-shadow(0 0 6px rgba(36,86,214,.5))}}
+.stage.skin-intro .edge.lit{stroke-width:4.5px}
+
+/* ===== Highlighter look (shape colours: CONFIG.palette, as --pg-* variables) =====
+   A side being named or worked on: a soft band draws on under it (.hl, pathLength 100), a ring bead glides back and
+   forth along it (.bead), and while only some sides are lit the others dim (.edge.dim). The build trail (screen 1) is
+   the same band following the pen; it fades out (.out) as the fill comes in. A named corner grows into a ring (engine). */
+.hl{stroke:var(--pg-hl,#fbbf24);stroke-width:13px;opacity:.85;stroke-dasharray:100 100;animation:hlIn .4s cubic-bezier(.3,0,.2,1) backwards}
+@keyframes hlIn{from{stroke-dashoffset:100;opacity:0}to{stroke-dashoffset:0;opacity:.85}}
+.hl.trail{stroke-dasharray:none;animation:none;transition:opacity .9s ease}
+.hl.trail.out{opacity:0}
+.edge.dim{opacity:.38}
+.bead{stroke:var(--pg-hlRing,#f59e0b);filter:drop-shadow(0 1px 2px rgba(18,59,99,.25));animation:beadRun 1.6s ease-in-out infinite alternate}
+@keyframes beadRun{from{transform:translateX(0)}to{transform:translateX(var(--L))}}
+.vdot{transition:r .3s cubic-bezier(.3,0,.3,1),stroke .25s ease,stroke-width .25s ease}
+@media (prefers-reduced-motion: reduce){.hl{animation:none}.hl.trail{transition:none}.bead{animation:none;transform:translateX(calc(var(--L) / 2))}.vdot{transition:none}}

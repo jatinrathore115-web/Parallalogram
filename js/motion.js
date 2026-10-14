@@ -10,9 +10,12 @@
   const G = window.gsap;
   const reduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   const $ = (sel) => Array.from(document.querySelectorAll('.stage ' + sel));
-  // glow tint and resting edge width follow the screen's look: the opening screens (skin 'intro') are blue and thinner
+  // glow tint: the palette's highlighter colour (CONFIG.palette.hl); resting edge width follows the screen's look
+  // (the opening screens, skin 'intro', are thinner)
   const intro = () => !!document.querySelector('.stage.skin-intro');
-  const tint = (a) => 'rgba(' + (intro() ? '36,86,214' : '232,40,122') + ',' + a + ')';
+  const hex = ((window.CONFIG && CONFIG.palette && CONFIG.palette.hl) || '#fbbf24').replace('#', '');
+  const RGB = [0, 2, 4].map((i) => parseInt(hex.substr(i, 2), 16)).join(',');
+  const tint = (a) => 'rgba(' + RGB + ',' + a + ')';
   const GLOW = () => 'drop-shadow(0px 0px 6px ' + tint(0.6) + ')', NOGLOW = () => 'drop-shadow(0px 0px 0px ' + tint(0) + ')';
   // one shared feel for every entrance: soft ease-out with a hint of overshoot, 90% -> 100% scale
   const ENTER = { duration: 0.6, ease: 'back.out(1.3)' };
@@ -99,7 +102,7 @@
         const tl = G.timeline();
         tl.fromTo(el, { opacity: 0, x: d[0], y: d[1], scale: 0.9 }, Object.assign({ opacity: 1, x: 0, y: 0, scale: 1, overwrite: 'auto' }, ENTER, { duration: reduced ? 0 : 0.55 }))
           .call(() => onLand && onLand(), null, 0.48)
-          .fromTo(el, { textShadow: '0px 0px 0px rgba(232,40,122,0)' }, { textShadow: '0px 0px 10px rgba(232,40,122,0.55)', duration: 0.4, ease: 'sine.out', yoyo: true, repeat: 1 }, 0.45);
+          .fromTo(el, { textShadow: '0px 0px 0px ' + tint(0) }, { textShadow: '0px 0px 10px ' + tint(0.8), duration: 0.4, ease: 'sine.out', yoyo: true, repeat: 1 }, 0.45);
         return tl;
       });
     },

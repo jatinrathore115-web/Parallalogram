@@ -58,6 +58,9 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   }
   clearT() { this.T.forEach((id) => clearTimeout(id)); this.T.clear(); }
   componentDidMount() {
+    // the shape palette as CSS variables for css/game.css (--pg-sideA, --pg-fill, --pg-hl ...)
+    const pal = CONFIG.palette || {};
+    Object.keys(pal).forEach((k) => document.documentElement.style.setProperty('--pg-' + k, pal[k]));
     const C = CONFIG.swiftee;
     if (window.SwifteeMascot) {
       this.sw = new window.SwifteeMascot({ base: C.base, idle: C.idle, minHoldMs: C.minHoldMs, find: () => document.querySelector('.swiftee') });
@@ -155,7 +158,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
 
   // ---------- audio ----------
   synth() { try { return (typeof window !== 'undefined' && window.speechSynthesis) ? window.speechSynthesis : null; } catch (e) { return null; } }
-  cancelSpeech() { const s = this.synth(); if (s) { try { s.cancel(); } catch (e) {} } }
+  cancelSpeech() { if (window.VO) VO.stop(); const s = this.synth(); if (s) { try { s.cancel(); } catch (e) {} } }
   pickVoice() {
     const s = this.synth(); if (!s) return;
     let vs = [];
@@ -362,6 +365,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     else this.setState({ line: text, reveal: 0, talking: true, bub: this.state.bub === 'bubA' ? 'bubB' : 'bubA', bubOff: false, centered: false });
     if (L.m) this.preloadPose(L.m);
     let i = 0, rDone = false, sDone = false, fin = false, bMode = false, spoke = false, started = false, mouthOn = false, tStart = 0;
+    let clipMs = 0; // a recorded clip's length at its play rate (0 = device voice / no voice: estimated pace)
     const live = () => tok === this.narrTok;
     const mouth = (on) => {
       if (!live() || on === mouthOn) return;
@@ -423,69 +427,107 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       showCard(); mouth(true);
       // screen 1: the outline draws itself while this line is spoken and closes as it ends (fill fades in after)
       if (this.buildArmed && this.cur().build) {
-        const lineMs = words.reduce((t, w) => t + nominal(w), 0) * (this.paceK || 1.18);
+        const lineMs = clipMs || words.reduce((t, w) => t + nominal(w), 0) * (this.paceK || 1.18);
         this.runBuild(Math.max(CONFIG.build.minMs, Math.min(CONFIG.build.maxMs, lineMs * CONFIG.build.ofLine)));
       }
       if (L.labelsIn) Motion.labelsIn(); // the corner letters come back as this line starts
       if (letterCues.length) { // paced estimate for voices without word boundaries (precise boundaries win if they come)
-        const est = words.reduce((t, w) => t + nominal(w), 0) * (this.paceK || 1.18);
+        const est = clipMs || words.reduce((t, w) => t + nominal(w), 0) * (this.paceK || 1.18);
         letterCues.forEach((c) => this.tm(() => { if (!bMode) fireLetter(c); }, est * c.at / Math.max(1, sp.length)));
       }
       tick();
     };
-    const s = this.synth();
-    const canSpeak = !this.state.muted && s && typeof SpeechSynthesisUtterance !== 'undefined';
-    if (!canSpeak) {
-      sDone = true; // no voice: words pace themselves and the beak moves while they appear
-      this.tm(() => { begin(); }, 140);
-      const silentEnd = () => { if (!live()) return; if (rDone) { mouth(false); finish(); } else this.tm(silentEnd, 120); };
-      this.tm(silentEnd, 300);
-      return;
-    }
-    const est = words.reduce((t, w) => t + nominal(w), 0) * 1.4;
-    try {
-      const u = new SpeechSynthesisUtterance(sp);
-      if (this.voice) u.voice = this.voice;
-      u.lang = (this.voice && this.voice.lang) || 'en-GB';
-      u.rate = 0.95; u.pitch = 1.25;
+    // the device's built-in voice (with none: the paced reveal); also the fallback when a recorded clip cannot play
+    const device = () => {
+      const s = this.synth();
+      const canSpeak = !this.state.muted && s && typeof SpeechSynthesisUtterance !== 'undefined';
+      if (!canSpeak) {
+        sDone = true; // no voice: words pace themselves and the beak moves while they appear
+        this.tm(() => { begin(); }, 140);
+        const silentEnd = () => { if (!live()) return; if (rDone) { mouth(false); finish(); } else this.tm(silentEnd, 120); };
+        this.tm(silentEnd, 300);
+        return;
+      }
+      const est = words.reduce((t, w) => t + nominal(w), 0) * 1.4;
+      try {
+        const u = new SpeechSynthesisUtterance(sp);
+        if (this.voice) u.voice = this.voice;
+        u.lang = (this.voice && this.voice.lang) || 'en-GB';
+        u.rate = 0.95; u.pitch = 1.25;
+        const end = () => {
+          if (!live() || sDone) return;
+          if (started && !bMode && tStart) { // learn this voice's speed; stay a touch slow so words never lead the voice
+            const ratio = (performance.now() - tStart) / Math.max(1, words.reduce((t, w) => t + nominal(w), 0));
+            if (ratio > 0.4 && ratio < 3) this.paceK = Math.max(0.6, 0.5 * (this.paceK || 1.18) + 0.5 * ratio * 1.06);
+          }
+          sDone = true; begin(); mouth(false); letterCues.forEach(fireLetter); revealAll(); finish();
+        };
+        u.onstart = () => { spoke = true; begin(); };
+        u.onend = end; u.onerror = end;
+        u.onboundary = (ev) => {
+          if (!live() || (ev.name && ev.name !== 'word')) return;
+          bMode = true; begin();
+          letterCues.forEach((c) => { if ((ev.charIndex || 0) >= c.at) fireLetter(c); });
+          const k = wordAt(ev.charIndex || 0);
+          if (k > i) { i = k; setReveal(i); }
+        };
+        // Chrome can drop an utterance queued in the same tick as cancel(); give it a beat.
+        this.tm(() => { if (live()) { try { s.speak(u); } catch (e) { end(); } } }, 60);
+        // a voice that never reports onstart: begin once the engine says it is speaking (or after a grace period)
+        const kick = (n) => {
+          if (!live() || started || sDone) return;
+          let busy = false; try { busy = s.speaking && !s.pending; } catch (e) {}
+          if (busy || n > 20) { begin(); return; }
+          this.tm(() => kick(n + 1), 80);
+        };
+        this.tm(() => kick(0), 200);
+        // watchdog: voices that never fire onend, or never start at all
+        const watch = () => {
+          if (!live() || sDone) return;
+          let busy = true;
+          try { busy = s.speaking || s.pending; } catch (e) { busy = false; }
+          if (!busy && (spoke || started)) { end(); return; }
+          this.tm(watch, 300);
+        };
+        this.tm(watch, 900);
+        this.tm(() => { if (live() && !sDone) end(); }, est * 1.8 + 2500);
+      } catch (e) { sDone = true; begin(); }
+    };
+    // recorded voice-over (js/voice.js): the clip is the clock. Words appear at the clip's pace - each word at its share
+    // of the spoken characters, max(16, (seconds - 0.35) * 1000 / characters) ms per character - so word cues fire as
+    // the voice says them; the line ends when the clip does (safety: what is left of it + 600 ms). A clip that never
+    // starts (missing file, play() refused) hands the line to the device voice below.
+    const voKey = keep ? L.s : text.replace(/\s*\n\s*/g, ' ').trim();
+    if (!this.state.muted && window.VO && VO.has(voKey)) {
+      const sec = VO.seconds(voKey), rate = VO.rate;
+      clipMs = sec * 1000 / rate;
+      // each displayed word's weight: its spoken length (numbers are said as words, so their digits weigh more)
+      const wt = words.map((w) => this.speechOf(w).replace(/\d/g, 'xxxx').length + 1), tot = wt.reduce((a, b) => a + b, 0);
+      const perCh = Math.max(16, (sec - 0.35) * 1000 / tot) / rate;
       const end = () => {
         if (!live() || sDone) return;
-        if (started && !bMode && tStart) { // learn this voice's speed; stay a touch slow so words never lead the voice
-          const ratio = (performance.now() - tStart) / Math.max(1, words.reduce((t, w) => t + nominal(w), 0));
-          if (ratio > 0.4 && ratio < 3) this.paceK = Math.max(0.6, 0.5 * (this.paceK || 1.18) + 0.5 * ratio * 1.06);
-        }
         sDone = true; begin(); mouth(false); letterCues.forEach(fireLetter); revealAll(); finish();
       };
-      u.onstart = () => { spoke = true; begin(); };
-      u.onend = end; u.onerror = end;
-      u.onboundary = (ev) => {
-        if (!live() || (ev.name && ev.name !== 'word')) return;
-        bMode = true; begin();
-        letterCues.forEach((c) => { if ((ev.charIndex || 0) >= c.at) fireLetter(c); });
-        const k = wordAt(ev.charIndex || 0);
-        if (k > i) { i = k; setReveal(i); }
-      };
-      // Chrome can drop an utterance queued in the same tick as cancel(); give it a beat.
-      this.tm(() => { if (live()) { try { s.speak(u); } catch (e) { end(); } } }, 60);
-      // a voice that never reports onstart: begin once the engine says it is speaking (or after a grace period)
-      const kick = (n) => {
-        if (!live() || started || sDone) return;
-        let busy = false; try { busy = s.speaking && !s.pending; } catch (e) {}
-        if (busy || n > 20) { begin(); return; }
-        this.tm(() => kick(n + 1), 80);
-      };
-      this.tm(() => kick(0), 200);
-      // watchdog: voices that never fire onend, or never start at all
-      const watch = () => {
-        if (!live() || sDone) return;
-        let busy = true;
-        try { busy = s.speaking || s.pending; } catch (e) { busy = false; }
-        if (!busy && (spoke || started)) { end(); return; }
-        this.tm(watch, 300);
-      };
-      this.tm(watch, 900);
-      this.tm(() => { if (live() && !sDone) end(); }, est * 1.8 + 2500);
-    } catch (e) { sDone = true; begin(); }
+      const handed = VO.play(voKey, {
+        start: () => {
+          if (!live()) return;
+          bMode = true; begin(); // bMode: no paced reveal - the timers below place every word
+          let at = 0;
+          wt.forEach((w, k) => { const ms = at * perCh; at += w; this.tm(() => { if (live() && k + 1 > i) { i = k + 1; setReveal(i); } }, ms); });
+          letterCues.forEach((c) => this.tm(() => fireLetter(c), clipMs * c.at / Math.max(1, sp.length)));
+          this.tm(() => { if (live() && !sDone) { VO.stop(); end(); } }, clipMs + 600);
+        },
+        end: end,
+        fail: () => { if (live() && !started) { clipMs = 0; device(); } }
+      });
+      if (handed) {
+        // a clip that stalls before it starts: give the line to the device voice
+        this.tm(() => { if (live() && !started && !sDone) { VO.stop(); clipMs = 0; device(); } }, 2500);
+        return;
+      }
+      clipMs = 0;
+    }
+    device();
   }
   preloadPose(state) { if (this.sw && this.sw.m) this.sw.preload(state); }
   // Step narration queue. Interjections (feedback, idle hints, replay) play over it and then
@@ -549,8 +591,9 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       if (this.drag || this.ld || this.rulerBusy || this.state.talking) { this.armIdle(); return; }
       if ((this.idleCount || 0) >= CONFIG.timing.idleMaxHints) return;
       this.idleCount = (this.idleCount || 0) + 1;
-      const st = this.cur();
-      this.interject({ m: CONFIG.swiftee.nudge, t: st.idle || (st.hint + '.') });
+      const st = this.cur(), t = st.idle || (st.hint && st.hint + '.');
+      if (!t) return; // a question with neither an idle line nor a hint (screens 5, 15): the hand / pulsing answers nudge instead
+      this.interject({ m: CONFIG.swiftee.nudge, t: t });
     }, CONFIG.timing.idleMs);
   }
   poke() { this.idleCount = 0; this.hideHand(); this.armIdle(); }
@@ -639,7 +682,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     }, (once ? CONFIG.hand.onceDelayMs : focus ? CONFIG.focus.handMs + Math.max(0, (this.focusAt || 0) + CONFIG.focus.moveMs - Date.now()) : CONFIG.hand.idleMs) + (extraMs || 0));
   }
   // Browsers only allow audio after a user gesture, so the first tap unlocks it.
-  rootDown() { this.unlockAudio(); if (this.state.started) this.poke(); }
+  rootDown() { this.unlockAudio(); if (window.VO) VO.unlock(); if (this.state.started) this.poke(); }
   unlockAudio() {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -653,6 +696,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   start() {
     if (this.state.started && this.state.step === 0 && Date.now() - (this.navAt || 0) < 800) return;
     this.unlockAudio();
+    if (window.VO) { VO.unlock(); VO.prefetch(); } // every clip loads quietly; the first tap (rootDown) unlocks the voice-over
     const s = this.synth();
     if (s) { this.pickVoice(); try { s.onvoiceschanged = () => this.pickVoice(); } catch (e) {} }
     this.snaps = {};
@@ -1574,18 +1618,26 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     const glowLeg = (k) => !!f.legGlow || said(k) || (task === 'extLegs' && !st.auto && !s.done && !waitFocusG && !(s.ext[k] > 0));
     const act = task === 'measure' ? this.activeSide() : null;
     const meas = (k) => task === 'measure' && (!!s.tap[k] || s.measuring === k);
-    // No yellow bands on the figure, ever: a side that would have been highlighted ("lit": legGlow, a line's
-    // glow, the side being measured / tapped) is drawn a little bolder in its own colour instead (.edge.lit)
+    // A highlighted side ("lit": legGlow, a line's glow, the side being measured / tapped) gets the highlighter look:
+    // a band drawn on under it (.hl), a ring bead gliding back and forth along it (g.bXX) and, while only some sides
+    // are lit, the other sides dim (.edge.dim). All four lit (the whole outline named) = bands only, nothing dims.
     const lit = {};
     const band = (k, p, q, on) => {
       lit[k] = st.auto ? on : (on || act === k || meas(k));
-      return seg(p, q, false, { cls: 'leg-glow' });
+      return seg(p, q, lit[k], { cls: 'hl' });
     };
     g.hDA = band('DA', D, A, glowLeg('DA'));
     g.hBC = band('BC', B, C, glowLeg('BC'));
     const glowBase = (k) => said(k) || (task === 'extBases' && !st.auto && !s.done && !waitFocusG && !(s.ext[k] > 0));
     g.hAB = band('AB', A, B, glowBase('AB'));
     g.hCD = band('CD', D, C, glowBase('CD'));
+    const nLit = ['AB', 'BC', 'CD', 'DA'].filter((k) => lit[k]).length;
+    const bead = (k, p, q) => {
+      const L = this.dist(p, q), on = lit[k] && nLit <= 2 && L > 30;
+      return { tf: 'translate(' + r1(p.x) + ' ' + r1(p.y) + ') rotate(' + r1(Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI) + ')', L: r1(L), d: dsp(on) };
+    };
+    // a parallel pair's beads travel the same way (A->B with D->C, D->A with C->B)
+    g.bAB = bead('AB', A, B); g.bBC = bead('BC', C, B); g.bCD = bead('CD', D, C); g.bDA = bead('DA', D, A);
     {
       const tp = s.tape, ends = tp ? this.walkEnds(tp.leg) : null;
       if (ends) {
@@ -1619,12 +1671,14 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     g.xAB = be('AB', A, B);
     g.xCD = be('CD', D, C);
     // edges
-    // shape colours (reference): hot-pink outline, soft pink-lilac fill; highlight colours unchanged
-    const NAVY = st.skin === 'intro' ? '#2456d6' : '#e8287a', OR = '#f08a24', PU = '#8e44d6';
-    const baseCol = (k) => (st.id === 'bases' && s.tap[k] ? OR : NAVY);
-    const legCol = (k) => ((st.id === 'legs' && s.tap[k]) || f.legsPurple ? PU : NAVY);
-    // flash (auto extend), wiggle (wrong-way drag), emph (named in the voice-over)
-    const eCls = (k) => 'e' + k + ' ' + (s.flash === k ? 'flash' : '') + (s.wig === k ? ' wiggle' : '') + (s.emph && s.emph[k] ? ' emph' : '') + (lit[k] ? ' lit' : '');
+    // shape colours (CONFIG.palette): AB, CD in sideA; AD, BC in sideB - except on the opening screens (skin 'intro'),
+    // where the shape is still a plain quadrilateral / trapezium and every side is sideA
+    const PAL = CONFIG.palette, OR = '#f08a24', PU = '#8e44d6';
+    const baseCol = (k) => (st.id === 'bases' && s.tap[k] ? OR : PAL.sideA);
+    const legCol = (k) => ((st.id === 'legs' && s.tap[k]) || f.legsPurple ? PU : st.skin === 'intro' ? PAL.sideA : PAL.sideB);
+    // flash (auto extend), wiggle (wrong-way drag), emph (named in the voice-over), lit / dim (highlighter focus)
+    const eCls = (k) => 'e' + k + ' ' + (s.flash === k ? 'flash' : '') + (s.wig === k ? ' wiggle' : '') + (s.emph && s.emph[k] ? ' emph' : '') +
+      (lit[k] ? ' lit' : nLit && nLit < 4 ? ' dim' : '');
     // build (screen 1): the shape draws itself while Swiftee talks - empty panel, then a glowing pink pen runs
     // D->A->B->C->D in one continuous stroke, leaving each finished edge behind; corners (dot + letter) appear as
     // the pen reaches them. Then a soft glow settles round the outline and the fill fades in (s.build, runBuild).
@@ -1638,6 +1692,13 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       g.trace = seg(cur.p, lerp(cur.p, cur.q, Math.min(1, (bd.d - cur.s) / cur.L)), true, { cls: 'trace' });
     }
     g.ol = { d: dsp(!!(bd && bd.settle) || !!st.assemble) };
+    // the build's highlighter trail: a band follows the pen round the outline, then fades away as the fill comes in
+    g.trail = seg(D, D, false);
+    if (bd && (building || bd.settle)) {
+      const ends = { DA: [D, A], AB: [A, B], BC: [B, C], CD: [D, C] };
+      Object.keys(ends).forEach((k) => { g['h' + k] = seg(ends[k][0], ends[k][1], edgeOn(k), { cls: 'hl trail' + (building ? '' : ' out') }); });
+      if (building && bd.d > 0) g.trail = Object.assign({}, g.trace, { d: 'inline' });
+    }
     g.eAB = seg(A, B, edgeOn('AB'), { c: baseCol('AB'), cls: eCls('AB') });
     g.eCD = seg(C, D, edgeOn('CD'), { c: baseCol('CD'), cls: eCls('CD') });
     g.eBC = seg(B, C, edgeOn('BC'), { c: legCol('BC'), cls: eCls('BC') });
@@ -1700,7 +1761,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     g.dBD = seg(B, D, !!(f.diag || s.diag.BD));
     // split: the four halves in four colours; halfPairs: the equal halves share a colour (OA, OC pink; OB, OD blue)
     {
-      const HC = f.halfPairs ? { A: '#e8287a', C: '#e8287a', B: '#2b7bd6', D: '#2b7bd6' } : { A: '#e8287a', B: '#2b7bd6', C: '#f08a24', D: '#2e9e4f' };
+      const HC = f.halfPairs ? { A: PAL.sideB, C: PAL.sideB, B: '#2b7bd6', D: '#2b7bd6' } : { A: PAL.sideB, B: '#2b7bd6', C: '#f08a24', D: '#2e9e4f' };
       const on = !!(f.split || f.halfPairs);
       ['A', 'B', 'C', 'D'].forEach((k) => { g['h' + k] = seg(O0(), P[k], on, { c: HC[k], cls: 'hseg' + (f.halfPairs ? ' pr' : '') }); });
     }
@@ -1783,7 +1844,9 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     ['A', 'B', 'C', 'D'].forEach((k) => {
       const anyV = this.anyCorner(), Vk = P[k], drag = dk === k || anyV;
       // noDots hides the corner dots, but never the handle of a corner the learner can drag
-      g['v' + k] = { x: r1(Vk.x), y: r1(Vk.y), r: vOn(k) && (!f.noDots || drag) ? (drag ? 11 : 7) + (em['v' + k] ? 4 : 0) : 0, c: drag ? PU : NAVY, w: drag ? 4 : 3 };
+      // a corner named in the voice-over grows into a highlighter ring
+      g['v' + k] = { x: r1(Vk.x), y: r1(Vk.y), r: vOn(k) && (!f.noDots || drag) ? (drag ? 11 : 7) + (em['v' + k] ? 4 : 0) : 0,
+        c: em['v' + k] ? PAL.hlRing : drag ? PU : PAL.dot, w: em['v' + k] ? 4.5 : drag ? 4 : 3 };
       const tapV = (task === 'tapAngles' || task === 'tapAD' || task === 'tapEq') && !s.done;
       const conn = task === 'connect' && !s.done && !fig;
       const pulse = (tapV && !s.ang[k] && (task === 'tapAngles' || (task === 'tapEq' ? k !== st.ref : k === 'A' || k === 'D'))) ||

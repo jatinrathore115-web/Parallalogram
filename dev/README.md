@@ -41,6 +41,7 @@ Mouse, touch and pen all work.
 
 - **Words, lines, hints, feedback, CFU answers** → `js/lesson-data.js`
 - **Snapping, drag limits, pacing, idle hints, stars** → `js/config.js`
+- **Shape colours** (sides, fill, highlighter band / bead / rings) → `CONFIG.palette` in `js/config.js`
 - **Swiftee's expression on a line** → the line's `m` in `js/lesson-data.js` (default `talking`)
 - **Swiftee's reactions** (idle, thinking time, praise, correct, wrong, idle hint, end) → `CONFIG.swiftee` in `js/config.js`
 - **Colours, sizes, animations** → `css/game.css`
@@ -90,13 +91,16 @@ Interaction rules: answers, corners and tiles are locked (dimmed) while Swiftee 
 locked until a question or task is finished; wrong answers wobble orange with a tip and can be retried; no tick
 icons are used anywhere (right answers turn green, with the correct sound and confetti).
 
-Voice-over: the game speaks every line with the device's built-in voice (Indian English voices are picked first).
-No recorded voice-over exists yet: `node dev/tools/build-vo-manifest.js` writes `dev/vo-manifest.csv`, every
-line with its screen, PDF page and a suggested file name, all marked "missing", ready for recording.
+Voice-over: every line is recorded (118 clips, Hindi-accented English, Ogg Opus in `assets/vo/`, 2.4 MB) - see
+**[dev/VOICEOVER.md](VOICEOVER.md)** for how the clips were made, how the game plays them and how to remake one. Where a clip
+cannot play (older Safari / iPad, `?vo=0`) the device's built-in voice speaks the line instead. Browsers allow audio only
+after the first tap, so on a fresh load screen 1 may type without its voice; the first tap anywhere unlocks it.
+(`dev/vo-manifest.csv` / `build-vo-manifest.js` are the older pre-recording list, superseded by `dev/tools/vo_script.json`.)
 
 ## Behaviour notes
 
-- **Narration** uses the device's built-in speech voice; if none is available, words still reveal on a timer.
+- **Narration** plays the recorded clip for each line (`js/voice.js`); without one it uses the device's built-in speech
+  voice, and with neither, words still reveal on a timer.
   On-screen words follow the voice's word events, at most one word ahead. Mute and replay are top right / on the bubble.
 - **Geometry rules**: the bases stay parallel (corners only slide sideways); the shape cannot cross itself,
   a base cannot collapse, and angles stay between about 35° and 145°. The pair sums shown are always exactly 180°.
@@ -213,7 +217,8 @@ Snapshots live in `assets/thumbs/NN.webp`; after changing screens run `node dev/
 
 ## Lip-sync and word timing
 
-The voice is the clock for every line (`say()` in `js/game-engine.js`). Nothing shows until the voice starts; Swiftee switches to her
+The voice is the clock for every line (`say()` in `js/game-engine.js`). With a recorded clip, each word appears at its share of
+the clip's length (see dev/VOICEOVER.md); with the device voice, as below. Nothing shows until the voice starts; Swiftee switches to her
 `talking` animation at that instant (`SwifteeMascot.talk()`), moves her beak only while the voice speaks, closes it when it ends and
 then shows the line's expression (`m`) for `CONFIG.swiftee.reactMs`. Each word appears when the voice reaches it: word-boundary
 events are mapped to exact word offsets in the spoken text. Voices without boundary events use a paced reveal that starts with the

@@ -1,0 +1,167 @@
+// Builds the recorded voice-over from the studio's zips (see dev/VOICEOVER.md).
+//
+//   node dev/tools/vo_build.js [voiceovers_batch.zip ...]
+//
+// 1. Every voiceovers/<id>.mp3 in the zips whose id is in dev/tools/vo_script.json becomes assets/vo/<id>.ogg
+//    (Ogg Opus, 32 kbps, mono, 48 kHz): Chromium decodes the MP3 and encodes Opus (WebCodecs); the Ogg pages are
+//    written here (RFC 7845). No ffmpeg needed. Needs Playwright: `npm i --no-save playwright` (or NODE_PATH).
+// 2. js/vo_lines.js is regenerated from dev/tools/vo_script.json and the clips' real lengths.
+// 3. Clips no line uses are deleted. Lines with no clip, and lesson lines missing from the script, are listed.
+// Safe to run again; with no zips it only re-measures the clips and rewrites the map.
+const fs = require('fs'), path = require('path'), zlib = require('zlib');
+const ROOT = path.join(__dirname, '..', '..');
+const SCRIPT = path.join(__dirname, 'vo_script.json'), VO = path.join(ROOT, 'assets', 'vo'), MAP = path.join(ROOT, 'js', 'vo_lines.js');
+const RATE = 48000, BITRATE = 32000;
+
+// ---------- zip (read) ----------
+function readZip(file) {
+  const b = fs.readFileSync(file);
+  let e = b.length - 22; while (e >= 0 && b.readUInt32LE(e) !== 0x06054b50) e--;
+  if (e < 0) throw new Error(file + ': not a zip');
+  const n = b.readUInt16LE(e + 10); let p = b.readUInt32LE(e + 16);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const method = b.readUInt16LE(p + 10), csize = b.readUInt32LE(p + 20), nl = b.readUInt16LE(p + 28), xl = b.readUInt16LE(p + 30), cl = b.readUInt16LE(p + 32);
+    const lo = b.readUInt32LE(p + 42), name = b.slice(p + 46, p + 46 + nl).toString('utf8');
+    const ds = lo + 30 + b.readUInt16LE(lo + 26) + b.readUInt16LE(lo + 28), raw = b.slice(ds, ds + csize);
+    if (!name.endsWith('/')) out.push({ name: name, data: method === 8 ? zlib.inflateRawSync(raw) : raw });
+    p += 46 + nl + xl + cl;
+  }
+  return out;
+}
+
+// ---------- Ogg Opus (write / measure) ----------
+const CRC = new Uint32Array(256).map((_, i) => { let r = i << 24; for (let k = 0; k < 8; k++) r = r & 0x80000000 ? (r << 1) ^ 0x04c11db7 : r << 1; return r >>> 0; });
+const crc = (buf) => { let c = 0; for (const x of buf) c = ((c << 8) ^ CRC[((c >>> 24) ^ x) & 255]) >>> 0; return c; };
+function oggPage(type, granule, serial, seq, packets) {
+  const segs = [];
+  packets.forEach((pk) => { let l = pk.length; while (l >= 255) { segs.push(255); l -= 255; } segs.push(l); });
+  const h = Buffer.alloc(27 + segs.length);
+  h.write('OggS', 0); h[4] = 0; h[5] = type; h.writeBigInt64LE(BigInt(granule), 6);
+  h.writeUInt32LE(serial, 14); h.writeUInt32LE(seq, 18); h[26] = segs.length; segs.forEach((s, i) => { h[27 + i] = s; });
+  const pg = Buffer.concat([h, ...packets]); pg.writeUInt32LE(crc(pg), 22); return pg;
+}
+// packets: 20 ms Opus packets (960 samples at 48 kHz); n: real samples at 48 kHz; the last page's granule trims the padding
+function oggOpus(packets, n, preSkip, srcRate) {
+  const head = Buffer.alloc(19); head.write('OpusHead', 0); head[8] = 1; head[9] = 1; head.writeUInt16LE(preSkip, 10); head.writeUInt32LE(srcRate, 12);
+  const vendor = Buffer.from('vo_build'), tags = Buffer.alloc(16 + vendor.length);
+  tags.write('OpusTags', 0); tags.writeUInt32LE(vendor.length, 8); vendor.copy(tags, 12); tags.writeUInt32LE(0, 12 + vendor.length);
+  const serial = 0x766f0000 + (n % 65536), pages = [oggPage(2, 0, serial, 0, [head]), oggPage(0, 0, serial, 1, [tags])];
+  const end = preSkip + n;
+  for (let i = 0, seq = 2; i < packets.length; i += 50, seq++) {
+    const grp = packets.slice(i, i + 50), last = i + 50 >= packets.length;
+    pages.push(oggPage(last ? 4 : 0, last ? end : Math.min(end, (i + grp.length) * 960), serial, seq, grp));
+  }
+  return Buffer.concat(pages);
+}
+// length in seconds from the last page's granule and the pre-skip
+function oggSeconds(file) {
+  const b = fs.readFileSync(file), pre = b.readUInt16LE(28 + 10); // OpusHead starts after the first page's 27-byte header + 1 lacing byte
+  let i = b.lastIndexOf('OggS');
+  return Number(b.readBigInt64LE(i + 6) - BigInt(pre)) / RATE;
+}
+
+// ---------- encode with Chromium ----------
+async function encodeAll(mp3s) {
+  let pw;
+  try { pw = require('playwright'); } catch (e) { console.error('Playwright not found: run `npm i --no-save playwright` in the game folder (or set NODE_PATH).'); process.exit(1); }
+  const browser = await pw.chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
+  const page = await browser.newPage();
+  await page.route('https://vo.build/**', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>vo</title>' }));
+  await page.goto('https://vo.build/'); // a secure context, for WebCodecs
+  const out = {};
+  for (const [id, data] of mp3s) {
+    const r = await page.evaluate(async ([b64, RATE, BITRATE]) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const src = await new OfflineAudioContext(1, 1, RATE).decodeAudioData(bytes.buffer);
+      const len = Math.round(src.duration * RATE), off = new OfflineAudioContext(1, len, RATE);
+      const node = off.createBufferSource(); node.buffer = src; node.connect(off.destination); node.start();
+      const pcm = (await off.startRendering()).getChannelData(0);
+      const packets = []; let desc = null, err = null;
+      const enc = new AudioEncoder({
+        output: (chunk, meta) => {
+          const a = new Uint8Array(chunk.byteLength); chunk.copyTo(a);
+          packets.push(btoa(String.fromCharCode(...a)));
+          if (meta && meta.decoderConfig && meta.decoderConfig.description) desc = btoa(String.fromCharCode(...new Uint8Array(meta.decoderConfig.description)));
+        },
+        error: (e) => { err = String(e); }
+      });
+      enc.configure({ codec: 'opus', sampleRate: RATE, numberOfChannels: 1, bitrate: BITRATE, opus: { frameDuration: 20000 } });
+      enc.encode(new AudioData({ format: 'f32-planar', sampleRate: RATE, numberOfFrames: pcm.length, numberOfChannels: 1, timestamp: 0, data: pcm }));
+      await enc.flush();
+      return { n: pcm.length, srcRate: src.sampleRate, packets: packets, desc: desc, err: err };
+    }, [data.toString('base64'), RATE, BITRATE]);
+    if (r.err) throw new Error(id + ': ' + r.err);
+    const desc = r.desc ? Buffer.from(r.desc, 'base64') : null;
+    const preSkip = desc && desc.toString('latin1', 0, 8) === 'OpusHead' ? desc.readUInt16LE(10) : 312;
+    const packets = r.packets.map((p) => Buffer.from(p, 'base64'));
+    if (packets.length * 960 < preSkip + r.n) throw new Error(id + ': encoder returned too few packets');
+    out[id] = oggOpus(packets, r.n, preSkip, r.srcRate);
+  }
+  // every new clip must decode back to its own length
+  for (const id of Object.keys(out)) {
+    const sec = await page.evaluate(async (b64) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      return (await new OfflineAudioContext(1, 1, 48000).decodeAudioData(bytes.buffer)).duration;
+    }, out[id].toString('base64'));
+    out[id].decoded = sec;
+  }
+  await browser.close();
+  return out;
+}
+
+// ---------- the lesson's own lines (to spot new or changed ones) ----------
+// same keys as js/voice.js: a shown line by its plain text, a voice-only line (keep) by its spoken text
+function lessonLines() {
+  const src = fs.readFileSync(path.join(ROOT, 'js', 'config.js'), 'utf8') + '\n' + fs.readFileSync(path.join(ROOT, 'js', 'lesson-data.js'), 'utf8');
+  const LESSON = new Function(src + '; return LESSON;')();
+  const plain = (t) => t.replace(/\s*\n\s*/g, ' ').trim(), keys = new Set();
+  const shown = (L) => keys.add(L.keep ? L.s : plain(L.t));
+  // lines js/game-engine.js says itself on the tasks this lesson uses (checkDrag)
+  const ENGINE = { dragB: ['BC is not parallel to AD yet. Keep dragging B to the right.', 'B went too far. Drag it back a little.'] };
+  LESSON.steps.forEach((st) => {
+    (st.lines || []).concat(st.after || []).forEach(shown);
+    (ENGINE[st.task] || []).forEach((t) => keys.add(t));
+    [st.wrong, st.ok, st.idle || (st.hint && st.hint + '.')].forEach((t) => { if (t) keys.add(plain(t)); });
+    (st.opts || []).forEach((o) => { if (o.fb) keys.add(plain(o.fb)); });
+    if (st.fill && st.fill.fb) Object.keys(st.fill.fb).forEach((k) => keys.add(plain(st.fill.fb[k])));
+  });
+  return keys;
+}
+
+(async () => {
+  const script = JSON.parse(fs.readFileSync(SCRIPT, 'utf8')), ids = new Set(script.map((r) => r.id));
+  fs.mkdirSync(VO, { recursive: true });
+  const mp3s = new Map();
+  process.argv.slice(2).forEach((z) => readZip(z).forEach((f) => {
+    const m = /(?:^|\/)(vo\d{3})\.mp3$/.exec(f.name);
+    if (m && ids.has(m[1])) mp3s.set(m[1], f.data); else if (m) console.log('skipped ' + f.name + ' (not in vo_script.json)');
+  }));
+  if (mp3s.size) {
+    const enc = await encodeAll(mp3s);
+    Object.keys(enc).forEach((id) => {
+      fs.writeFileSync(path.join(VO, id + '.ogg'), enc[id]);
+      const sec = oggSeconds(path.join(VO, id + '.ogg'));
+      if (Math.abs(sec - enc[id].decoded) > 0.05) console.log('WARNING ' + id + ': granule length ' + sec.toFixed(2) + ' s, decodes to ' + enc[id].decoded.toFixed(2) + ' s');
+    });
+    console.log('encoded ' + mp3s.size + ' clip(s)');
+  }
+  // clips no line uses (and anything else) leave assets/vo/
+  fs.readdirSync(VO).forEach((f) => { const m = /^(vo\d{3})\.ogg$/.exec(f); if (!m || !ids.has(m[1])) { fs.unlinkSync(path.join(VO, f)); console.log('removed assets/vo/' + f); } });
+  const map = {}, missing = [];
+  script.forEach((r) => {
+    const f = path.join(VO, r.id + '.ogg');
+    if (fs.existsSync(f)) map[r.line] = [r.id, Math.round(oggSeconds(f) * 100) / 100]; else missing.push(r.id + '  ' + r.line);
+  });
+  fs.writeFileSync(MAP, '// GENERATED by dev/tools/vo_build.js from dev/tools/vo_script.json. Do not edit by hand.\n' +
+    '// line as shown (plain text; a voice-only line by its spoken text) -> [clip in assets/vo/, seconds]\n' +
+    'const VO_LINES = {\n' + Object.keys(map).map((k) => '  ' + JSON.stringify(k) + ': ' + JSON.stringify(map[k])).join(',\n') + '\n};\n');
+  const total = Object.values(map).reduce((t, v) => t + v[1], 0);
+  const bytes = fs.readdirSync(VO).reduce((t, f) => t + fs.statSync(path.join(VO, f)).size, 0);
+  console.log('js/vo_lines.js: ' + Object.keys(map).length + ' of ' + script.length + ' lines voiced, ' + (total / 60).toFixed(1) + ' min, assets/vo/ ' + (bytes / 1024).toFixed(0) + ' KB');
+  if (missing.length) console.log('no clip yet:\n  ' + missing.join('\n  '));
+  const inScript = new Set(script.map((r) => r.line)), lesson = lessonLines();
+  const notIn = [...lesson].filter((k) => !inScript.has(k)), stale = script.filter((r) => !lesson.has(r.line));
+  if (notIn.length) console.log('lesson lines missing from vo_script.json (add them, then voice them):\n  ' + notIn.join('\n  '));
+  if (stale.length) console.log('script lines the lesson no longer says:\n  ' + stale.map((r) => r.id + '  ' + r.line).join('\n  '));
+})().catch((e) => { console.error(e); process.exit(1); });

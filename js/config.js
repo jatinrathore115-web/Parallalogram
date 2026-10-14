@@ -3,6 +3,11 @@
 // =====================================================================
 const CONFIG = {
   pxPerCm: 60,                       // board scale: 1 cm = 60 board px
+  // shape palette, one for every screen. sideA = AB and CD (and every side on the opening 'intro' screens), sideB = AD
+  // and BC once the shape is a parallelogram; fill = inside the shape; dot = corner rings; hl / hlRing = the highlighter
+  // band under a named side, its gliding bead, a named corner's ring and the build / outline glow.
+  // Applied on load as CSS variables (--pg-sideA, --pg-sideB, --pg-fill, --pg-dot, --pg-hl, --pg-hlRing) for css/game.css.
+  palette: { sideA: '#4338ca', sideB: '#db2777', fill: '#fff1f6', dot: '#4338ca', hl: '#fbbf24', hlRing: '#f59e0b' },
   // opening shape: the storyboard's symmetric trapezium (pages 1-8): CD 6 cm, both legs 3 cm, base angles 70°, centred in
   // the panel. Dragging B until BC ∥ AD makes the parallelogram of the storyboard: AB = CD = 6 cm, AD = BC = 3 cm,
   // ∠A = ∠C = 110°, ∠B = ∠D = 70°
