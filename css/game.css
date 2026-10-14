@@ -54,7 +54,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .edge{transition:stroke .35s ease,stroke-width .3s cubic-bezier(.3,0,.3,1),opacity .3s ease}
 /* screen 4: a slanted side flashes once (thicker, soft highlighter glow) before its dotted extension draws */
 .edge.flash{animation:edgeFlash .8s ease-in-out}
-@keyframes edgeFlash{0%,100%{stroke-width:5px;filter:none}50%{stroke-width:9px;filter:drop-shadow(0 0 6px var(--pg-hl,#fbbf24))}}
+@keyframes edgeFlash{0%,100%{stroke-width:5px;filter:none}50%{stroke-width:9px;filter:drop-shadow(0 0 6px var(--pg-hl,#b8e62e))}}
 @media (prefers-reduced-motion: reduce){.edge.flash{animation:none;stroke-width:8px}}
 .arc{stroke-dasharray:100 100;animation:arcIn .5s ease-out backwards}
 .d1{animation-delay:.15s}
@@ -149,7 +149,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .board{transform-origin:0 0;transition:transform .7s cubic-bezier(.22,.8,.3,1)}
 /* (the board <svg> takes its transform-origin/transition inline: the runtime does not bind class on the svg root) */
 .shape-fill.spot{animation:shapePulse 2.4s ease-in-out .7s infinite}
-@keyframes shapePulse{0%,100%{filter:drop-shadow(0 0 0 rgba(251,191,36,0))}50%{filter:drop-shadow(0 0 14px rgba(251,191,36,.55))}}
+@keyframes shapePulse{0%,100%{filter:drop-shadow(0 0 0 rgba(184,230,46,0))}50%{filter:drop-shadow(0 0 14px rgba(184,230,46,.55))}}
 .swiftee{left:130px;animation:swHome .45s ease-out}
 .swiftee.spot{left:900px;animation:swSpot .5s ease-out}
 @keyframes swHome{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -278,13 +278,13 @@ a{color:#123b63}a:hover{color:#0b2742}
 .edge.lit.emph{stroke-width:8px}
 /* screen 4 leg trace: a soft pink glow drawn on along the leg (D->A, C->B); at the corner it fades off the side while
    the dotted extension (xleg) draws on from the corner */
-.trace{stroke:var(--pg-sideA,#4338ca);opacity:.95;filter:drop-shadow(0 0 4px rgba(251,191,36,.6));transition:opacity .35s ease}
+.trace{stroke:var(--pg-slate,#3b5573);opacity:.95;filter:drop-shadow(0 0 4px rgba(184,230,46,.7));transition:opacity .35s ease}
 .trace.out{opacity:0}
 .xleg{animation:xlegIn .2s ease both}
 @keyframes xlegIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){.xleg{animation:none}.trace{transition:none}}
 /* settling glow round a finished outline (screens 1 and 4) */
-.outline-settle{opacity:0;stroke:var(--pg-hl,#fbbf24);stroke-width:12px;filter:drop-shadow(0 0 6px rgba(251,191,36,.6))} /* faded in/out by GSAP (js/motion.js) */
+.outline-settle{opacity:0;stroke:var(--pg-hl,#b8e62e);stroke-width:12px;filter:drop-shadow(0 0 6px rgba(184,230,46,.7))} /* faded in/out by GSAP (js/motion.js) */
 /* screen 2 side numbers: bold plain numerals (no box); their entrance is GSAP (Motion.sideNums) */
 .tag.snum{background:none;box-shadow:none;padding:0;font-family:'Nunito',system-ui,sans-serif;font-weight:900;font-size:26px;color:#123b63}
 
@@ -294,7 +294,8 @@ a{color:#123b63}a:hover{color:#0b2742}
 
 /* ===== Parallelogram lesson additions ===== */
 /* equal angles share a colour once found: A, C orange; B, D blue (CSS beats the arcs' own stroke) */
-.arc.pa{stroke:#f08a24}.arc.pb{stroke:#2b7bd6}
+.arc.kA{stroke:var(--pg-vA,#ea580c)}.arc.kB{stroke:var(--pg-vB,#7c3aed)}.arc.kC{stroke:var(--pg-vC,#0284c7)}.arc.kD{stroke:var(--pg-vD,#059669)}
+.arc.pa{stroke:var(--pg-vA,#ea580c)}.arc.pb{stroke:var(--pg-vB,#7c3aed)}
 /* a checkpoint's unknown ('?') labels */
 .tag.q{color:#6a2bb0;border-color:#b98be6;background:#f6efff;font-weight:900}
 .mtag.fig{animation:none}
@@ -369,7 +370,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .stage.skin-intro .bubble-tail path{fill:#fff;stroke:none}
 .stage.skin-intro .edge{stroke-width:3.5px}
 .stage.skin-intro .trace{stroke-width:4.5px}
-.shape-fill{fill:var(--pg-fill,#fff1f6);transition:fill .45s ease}
+.shape-fill{fill:var(--pg-fill,#f7e4f2);transition:fill .45s ease}
 .stage.skin-intro .tag.snum{color:#16263a}
 /* screen 3: the shape's name is a plain caption just under the shape (a figure label, not a card) */
 .stage.skin-intro .chip.name{background:none;border:none;box-shadow:none;padding:0;position:relative;top:-62px;font-weight:800;font-size:30px;color:#16263a}
@@ -386,7 +387,7 @@ a{color:#123b63}a:hover{color:#0b2742}
 .chip.brk{flex-basis:100%;height:0;padding:0;margin:0;border:0;background:none;box-shadow:none;animation:none}
 /* word cues (cue-pulse screens): the pair being said pulses gently in its own colour, and its card lifts softly */
 .chip{transition:transform .3s cubic-bezier(.3,0,.2,1),box-shadow .3s ease,border-color .3s ease}
-.chip.hi{transform:translateY(-4px) scale(1.06);border-color:var(--pg-hlRing,#f59e0b);box-shadow:0 8px 18px rgba(245,158,11,.28)}
+.chip.hi{transform:translateY(-4px) scale(1.06);border-color:var(--pg-hlRing,#5f9a0e);box-shadow:0 8px 18px rgba(95,154,14,.28)}
 @media (prefers-reduced-motion: reduce){.chip{transition:none}}
 .chip-row.top{align-content:flex-start!important}
 /* tight corners: the angle label steps down a size so it still fits inside the shape (layout in renderVals) */
@@ -397,12 +398,25 @@ a{color:#123b63}a:hover{color:#0b2742}
    A side being named or worked on: a soft band draws on under it (.hl, pathLength 100), a ring bead glides back and
    forth along it (.bead), and while only some sides are lit the others dim (.edge.dim). The build trail (screen 1) is
    the same band following the pen; it fades out (.out) as the fill comes in. A named corner grows into a ring (engine). */
-.hl{stroke:var(--pg-hl,#fbbf24);stroke-width:13px;opacity:.85;stroke-dasharray:100 100;animation:hlIn .4s cubic-bezier(.3,0,.2,1) backwards}
+.hl{stroke:var(--pg-hl,#b8e62e);stroke-width:13px;opacity:.85;stroke-dasharray:100 100;animation:hlIn .4s cubic-bezier(.3,0,.2,1) backwards}
 @keyframes hlIn{from{stroke-dashoffset:100;opacity:0}to{stroke-dashoffset:0;opacity:.85}}
 .hl.trail{stroke-dasharray:none;animation:none;transition:opacity .9s ease}
 .hl.trail.out{opacity:0}
 .edge.dim{opacity:.38}
-.bead{stroke:var(--pg-hlRing,#f59e0b);filter:drop-shadow(0 1px 2px rgba(18,59,99,.25));animation:beadRun 1.6s ease-in-out infinite alternate}
+.bead{stroke:var(--pg-hlRing,#5f9a0e);filter:drop-shadow(0 1px 2px rgba(18,59,99,.25));animation:beadRun 1.6s ease-in-out infinite alternate}
 @keyframes beadRun{from{transform:translateX(0)}to{transform:translateX(var(--L))}}
 .vdot{transition:r .3s cubic-bezier(.3,0,.3,1),stroke .25s ease,stroke-width .25s ease}
 @media (prefers-reduced-motion: reduce){.hl{animation:none}.hl.trail{transition:none}.bead{animation:none;transform:translateX(calc(var(--L) / 2))}.vdot{transition:none}}
+
+/* parallel chevrons wear their pair's colour (AB, CD: sideA; AD, BC: sideB) */
+.par-ch.ch-a{stroke:var(--pg-sideA,#0a7ea8)}.par-ch.ch-b{stroke:var(--pg-sideB,#c2187a)}
+/* a side named in the voice-over: its band draws on, holds and fades within CONFIG.emph.holdMs */
+.hl.flash{animation:hlFlash .65s ease-out both}
+@keyframes hlFlash{0%{stroke-dashoffset:100;opacity:0}35%{stroke-dashoffset:0;opacity:.85}70%{opacity:.85}100%{stroke-dashoffset:0;opacity:0}}
+/* angle focus (s.aFocus): the angles a line names stay vivid, the others fade back */
+.arc.dim{opacity:.25}.tag.alab.dim{opacity:.35}
+.arc,.tag.alab{transition:opacity .3s ease,stroke-width .3s cubic-bezier(.3,0,.3,1),transform .3s cubic-bezier(.3,0,.3,1)}
+@media (prefers-reduced-motion: reduce){.hl.flash{animation:none;opacity:.85}.arc,.tag.alab{transition:none}}
+/* pair cards (AB ∥ CD, AB = CD / AD ∥ BC, AD = BC) carry their sides' colour, as in the colour key */
+.chip.pairA{border-color:var(--pg-sideA,#0a7ea8);color:#075a78}.chip.pairB{border-color:var(--pg-sideB,#c2187a);color:#8f1059}
+.chip.pairA.hi,.chip.pairB.hi{border-color:var(--pg-hlRing,#5f9a0e)}

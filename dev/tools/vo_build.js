@@ -110,6 +110,78 @@ async function encodeAll(mp3s) {
   return out;
 }
 
+// ---------- word timing from the audio ----------
+// Each clip's loudness every 10 ms (Chromium decodes the Ogg), for timeWords().
+async function envelopes(files) {
+  let pw;
+  try { pw = require('playwright'); } catch (e) { return null; }
+  const browser = await pw.chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
+  const page = await browser.newPage();
+  await page.route('https://vo.build/**', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>vo</title>' }));
+  await page.goto('https://vo.build/');
+  const out = {};
+  for (const [id, f] of files) {
+    out[id] = await page.evaluate(async (b64) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const buf = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(bytes.buffer);
+      const d = buf.getChannelData(0), hop = Math.round(buf.sampleRate / 100), env = [];
+      for (let i = 0; i + hop <= d.length; i += hop) { let s = 0; for (let j = i; j < i + hop; j++) s += d[j] * d[j]; env.push(Math.sqrt(s / hop)); }
+      return env;
+    }, fs.readFileSync(f).toString('base64'));
+  }
+  await browser.close();
+  return out;
+}
+// the engine's own word split (toWords in js/game-engine.js): "7 cm" and "AB = 7" stay one word
+const toWords = (t) => t.replace(/(\d) (cm)\b/g, '$1 $2').replace(/ ([=+−]) /g, ' $1 ').split(/[ \t\n]+/).filter(Boolean);
+// how long a written word is when said (numbers and symbols as words), for spreading time inside a phrase
+const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
+  'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'], TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+const numWords = (n) => (n < 20 ? ONES[n] : n < 100 ? TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '') : ONES[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' and ' + numWords(n % 100) : ''));
+const saidLen = (w) => w.replace(/ /g, ' ').replace(/∠\s?([A-DO])/g, 'angle $1').replace(/∥/g, ' is parallel to ').replace(/\b([A-DO])([A-DO])\b/g, '$1 $2')
+  .replace(/\bcm\b/g, 'centimetres').replace(/°/g, ' degrees').replace(/=/g, ' equals ').replace(/\+/g, ' plus ')
+  .replace(/\d+(\.\d+)?/g, (m) => (m.includes('.') ? numWords(+m.split('.')[0]) + ' point ' + m.split('.')[1].split('').map((d) => ONES[+d]).join(' ') : numWords(+m)))
+  .replace(/\s+/g, ' ').trim().length + 1;
+// Word start times (s) for a line from its clip's loudness: speech runs from the first to the last loud frame; pauses
+// (quiet runs >= 120 ms) are matched in order to the line's commas / full stops by a small alignment (an unmatched pause
+// or boundary just costs a little), and inside each phrase the words share the time by their spoken length.
+function timeWords(key, env) {
+  const words = toWords(key), w = words.map(saidLen), n = env.length;
+  const sorted = env.slice().sort((a, b) => a - b), th = Math.max(0.006, 0.08 * sorted[Math.floor(n * 0.95)]);
+  let s0 = 0; while (s0 < n - 3 && !(env[s0] >= th && env[s0 + 1] >= th && env[s0 + 2] >= th)) s0++;
+  let s1 = n - 1; while (s1 > s0 && env[s1] < th) s1--;
+  const pauses = [];
+  for (let i = s0, q = -1; i <= s1; i++) {
+    if (env[i] < th) { if (q < 0) q = i; } else if (q >= 0) { if (i - q >= 12) pauses.push([q, i]); q = -1; }
+  }
+  const cum = []; let tot = 0; w.forEach((x) => { cum.push(tot); tot += x; });
+  const bnd = []; words.forEach((x, i) => { if (i < words.length - 1 && /[.,!?;:…]$/.test(x)) bnd.push(cum[i] + w[i]); });
+  const span = Math.max(1, s1 - s0), expect = bnd.map((c) => s0 + span * c / tot);
+  // alignment (frames): match boundary b to pause p in order; skipping a pause costs 25, a boundary 40
+  const B = bnd.length, Pn = pauses.length, INF = 1e9, dp = [], bk = [];
+  for (let i = 0; i <= B; i++) { dp.push(new Array(Pn + 1).fill(INF)); bk.push(new Array(Pn + 1).fill(0)); }
+  dp[0][0] = 0;
+  for (let i = 0; i <= B; i++) for (let j = 0; j <= Pn; j++) {
+    const v = dp[i][j]; if (v >= INF) continue;
+    if (j < Pn && v + 25 < dp[i][j + 1]) { dp[i][j + 1] = v + 25; bk[i][j + 1] = 1; }
+    if (i < B && v + 40 < dp[i + 1][j]) { dp[i + 1][j] = v + 40; bk[i + 1][j] = 2; }
+    if (i < B && j < Pn) { const c = v + Math.abs(expect[i] - (pauses[j][0] + pauses[j][1]) / 2); if (c < dp[i + 1][j + 1]) { dp[i + 1][j + 1] = c; bk[i + 1][j + 1] = 3; } }
+  }
+  const anchors = [[0, s0, s0]]; // [chars, time leaving the previous phrase, time entering the next]
+  const matched = [];
+  for (let i = B, j = Pn; i > 0 || j > 0;) { const m = bk[i][j]; if (m === 3) { matched.push([bnd[i - 1], pauses[j - 1]]); i--; j--; } else if (m === 2) i--; else j--; }
+  matched.reverse().forEach((m) => anchors.push([m[0], m[1][0], m[1][1]]));
+  anchors.push([tot, s1, s1]);
+  const at = (c) => { // a word that starts at a matched boundary starts after its pause
+    for (let k = 1; k < anchors.length; k++) {
+      const a = anchors[k - 1], b = anchors[k];
+      if (c < b[0] || k === anchors.length - 1) return a[2] + (b[1] - a[2]) * (c - a[0]) / Math.max(1, b[0] - a[0]);
+    }
+    return s0;
+  };
+  return { t: cum.map((c) => Math.round(at(c)) / 100), matched: matched.length, bounds: B };
+}
+
 // ---------- the lesson's own lines (to spot new or changed ones) ----------
 // same keys as js/voice.js: a shown line by its plain text, a voice-only line (keep) by its spoken text
 function lessonLines() {
@@ -149,12 +221,24 @@ function lessonLines() {
   // clips no line uses (and anything else) leave assets/vo/
   fs.readdirSync(VO).forEach((f) => { const m = /^(vo\d{3})\.ogg$/.exec(f); if (!m || !ids.has(m[1])) { fs.unlinkSync(path.join(VO, f)); console.log('removed assets/vo/' + f); } });
   const map = {}, missing = [];
+  // word timings: measured from every clip; without Playwright the ones already in js/vo_lines.js are kept
+  const have = script.filter((r) => fs.existsSync(path.join(VO, r.id + '.ogg')));
+  const env = await envelopes(have.map((r) => [r.id, path.join(VO, r.id + '.ogg')]));
+  let prev = {};
+  try { prev = new Function(fs.readFileSync(MAP, 'utf8') + '; return VO_LINES;')(); } catch (e) {}
+  let aligned = 0, bounds = 0;
   script.forEach((r) => {
     const f = path.join(VO, r.id + '.ogg');
-    if (fs.existsSync(f)) map[r.line] = [r.id, Math.round(oggSeconds(f) * 100) / 100]; else missing.push(r.id + '  ' + r.line);
+    if (!fs.existsSync(f)) { missing.push(r.id + '  ' + r.line); return; }
+    const e = [r.id, Math.round(oggSeconds(f) * 100) / 100];
+    if (env && env[r.id]) { const tw = timeWords(r.line, env[r.id]); e.push(tw.t); aligned += tw.matched; bounds += tw.bounds; }
+    else if (prev[r.line] && prev[r.line][0] === r.id && prev[r.line][2]) e.push(prev[r.line][2]);
+    map[r.line] = e;
   });
+  if (env) console.log('word timings: measured from the audio (' + aligned + ' of ' + bounds + ' comma / full-stop pauses found in the speech)');
+  else console.log('word timings: Playwright not found, kept the existing ones');
   fs.writeFileSync(MAP, '// GENERATED by dev/tools/vo_build.js from dev/tools/vo_script.json. Do not edit by hand.\n' +
-    '// line as shown (plain text; a voice-only line by its spoken text) -> [clip in assets/vo/, seconds]\n' +
+    '// line as shown (plain text; a voice-only line by its spoken text) -> [clip in assets/vo/, seconds, start of each word (s)]\n' +
     'const VO_LINES = {\n' + Object.keys(map).map((k) => '  ' + JSON.stringify(k) + ': ' + JSON.stringify(map[k])).join(',\n') + '\n};\n');
   const total = Object.values(map).reduce((t, v) => t + v[1], 0);
   const bytes = fs.readdirSync(VO).reduce((t, f) => t + fs.statSync(path.join(VO, f)).size, 0);

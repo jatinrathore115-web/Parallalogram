@@ -3,11 +3,15 @@
 // =====================================================================
 const CONFIG = {
   pxPerCm: 60,                       // board scale: 1 cm = 60 board px
-  // shape palette, one for every screen. sideA = AB and CD (and every side on the opening 'intro' screens), sideB = AD
-  // and BC once the shape is a parallelogram; fill = inside the shape; dot = corner rings; hl / hlRing = the highlighter
-  // band under a named side, its gliding bead, a named corner's ring and the build / outline glow.
-  // Applied on load as CSS variables (--pg-sideA, --pg-sideB, --pg-fill, --pg-dot, --pg-hl, --pg-hlRing) for css/game.css.
-  palette: { sideA: '#4338ca', sideB: '#db2777', fill: '#fff1f6', dot: '#4338ca', hl: '#fbbf24', hlRing: '#f59e0b' },
+  // shape palette, one for every screen. Colour carries meaning: a side takes its pair's colour only once that pair is
+  // known to be parallel - sideA (Aqua Pulse) = AB and CD, sideB (Fuchsia Beam) = AD and BC - and is slate until then
+  // (the plain quadrilateral, the trapezium's legs). fill = inside the shape; dot = corner rings; hl / hlRing (Volt Lime)
+  // = the highlighter band under a named side, its gliding bead, a named corner's ring, the build / outline glow.
+  // vA..vD = each corner's own colour (its angle arc, its half of a diagonal); once opposite angles / halves are shown
+  // equal, A and C share vA and B and D share vB.
+  // Applied on load as CSS variables (--pg-sideA, --pg-fill, --pg-hl, --pg-vA ...) for css/game.css.
+  palette: { sideA: '#0a7ea8', sideB: '#c2187a', slate: '#3b5573', fill: '#f7e4f2', dot: '#3b5573', hl: '#b8e62e', hlRing: '#5f9a0e',
+    vA: '#ea580c', vB: '#7c3aed', vC: '#0284c7', vD: '#059669' },
   // opening shape: the storyboard's symmetric trapezium (pages 1-8): CD 6 cm, both legs 3 cm, base angles 70°, centred in
   // the panel. Dragging B until BC ∥ AD makes the parallelogram of the storyboard: AB = CD = 6 cm, AD = BC = 3 cm,
   // ∠A = ∠C = 110°, ∠B = ∠D = 70°

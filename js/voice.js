@@ -20,7 +20,9 @@
     rate: Math.max(0.5, Math.min(4, parseFloat(q('speed')) || 1)),
     has(key) { return VO.on && !!lines[key]; },
     seconds(key) { const v = lines[key]; return v ? v[1] : 0; },
-    // the first tap (Start): play muted, then pause - tablets refuse audio until an element has played in a gesture
+    // when each displayed word starts in the clip (s), measured from the audio by dev/tools/vo_build.js
+    times(key) { const v = lines[key]; return v && v[2] ? v[2] : null; },
+    // the first tap: play muted, then pause - tablets refuse audio until an element has played in a gesture
     unlock() {
       if (!VO.on || unlocked || played) return;
       unlocked = true;

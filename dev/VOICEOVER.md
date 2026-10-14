@@ -7,7 +7,7 @@ mono). The game plays the clip for a line and types the words at the clip's pace
 |---|---|
 | `assets/vo/voNNN.ogg` | one clip per line, numbered in the order a learner first hears them |
 | `dev/tools/vo_script.json` | the script: `id`, `line` (exactly as the bubble shows it), `spoken` (what the voice was given), `devanagari` (what the studio actually spoke), `where` (screen and moment) |
-| `js/vo_lines.js` | generated map, line as shown → `[clip, seconds]`; never edit by hand |
+| `js/vo_lines.js` | generated map, line as shown → `[clip, seconds, start of each word]`; never edit by hand |
 | `js/voice.js` | the player |
 | `dev/tools/vo_build.js` | rebuild tool: studio zip(s) → clips + map |
 
@@ -64,9 +64,13 @@ All in `say()` (`js/game-engine.js`), the one function that puts a line in Swift
 2. **One reused audio element**, unlocked by the learner's first tap anywhere (played muted, then paused; tablets
    refuse audio otherwise). Browsers block audio before that first tap, so on a fresh load screen 1 may type without
    its voice (the device voice is blocked too). Every clip is prefetched quietly, one at a time, from the start.
-3. **Words at the voice's pace:** each word appears at its share of the spoken characters, at
-   `max(16, (seconds − 0.35) × 1000 / characters)` ms per character, so word cues (glows, cards, pulses, corner
-   letters) fire as the words are said. Screen 1's outline is drawn in the clip's real length.
+3. **Words when they are said:** `vo_build.js` measures every clip's loudness (10 ms steps): where speech starts and
+   ends (each clip opens with ~0.3 s of silence) and its pauses, which it matches in order to the line's commas and full
+   stops (88 of 97 found); inside each phrase the words share the time by their spoken length. The map stores each
+   word's start, and the game reveals a word when the clip's own playhead (`currentTime`) reaches it, so start-up lag
+   or buffering never puts words ahead of the voice (measured: within ~0.05 s). Every word cue - side glows, cards,
+   pulses, the angle focus - fires on its word. A line without timings falls back to its share of the spoken
+   characters, `max(16, (seconds − 0.35) × 1000 / characters)` ms each. Screen 1's outline is drawn in the clip's length.
 4. **The clip is the clock:** the line ends when the clip ends (safety: its length + 600 ms), and only then does a
    screen move on, an answer unlock, or the next line start. A new line, a screen change, mute, Back/Next or restart
    stops the voice.
