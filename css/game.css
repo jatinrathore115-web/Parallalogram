@@ -778,3 +778,46 @@ a{color:#123b63}a:hover{color:#0b2742}
 /* once every tile is placed the spent tray fades away instead of leaving greyed ghosts under the answer */
 .stage .tile-row{transition:opacity .4s ease,transform .4s ease}
 .stage .tile-row:not(:has(.tile:not(.used))){opacity:0;transform:translateY(8px);pointer-events:none}
+/* the question plate is centred on the card (the same axis as the shape and the answers), at most ~60 characters a
+   line between the screen counter and Back / Next; a long question breaks into balanced lines (the engine's fitBubble
+   then shrinks the plate to its widest line, so it stays centred) */
+.stage.in-card.scene.plate .bubble,.stage.in-card.scene.plate .bubble.top,.stage.in-card.scene.plate .bubble.manual{left:0!important;right:0!important;margin:0 auto!important;
+  max-width:700px!important;min-height:54px;padding:8px 28px}
+.stage.in-card.scene.plate .bubble-text{text-wrap:balance;line-height:1.3}
+/* balanced lines: the plate's words flow as inline blocks (text-wrap:balance does not act on flex items), spaced as the
+   flex gap did, so a two-line question splits evenly ("Which of the following are true / for this parallelogram? ...") */
+.stage.in-card.scene.plate .bubble-text{display:block!important;white-space:normal!important;text-wrap:balance;text-align:center}
+.stage.in-card.scene.plate .bubble-text .w{display:inline-block;margin:0 .14em}
+/* the plate sizes itself (its text's own width, at most 700 px) - the speech bubble's shrink-to-widest-line width would
+   re-wrap the balanced lines into a narrow three-line column */
+.stage.in-card.scene.plate .bubble,.stage.in-card.scene.plate .bubble.top,.stage.in-card.scene.plate .bubble.manual{width:fit-content!important}
+/* two-column answers: 48 px rows (CONFIG.card.optWrapH), so three rows and the shape fit the card at its one size */
+.stage .wrap>.opt:not(.gridopt){height:48px!important}
+/* ===== the plate, calm (no glitches): the whole question shows at once - words already spoken in full white, the rest
+   softly dimmed - so the box never empties, blinks or resizes while Swiftee speaks; a new line crossfades its text and
+   the box glides to its new size; the plate itself glides in once, when a caption screen follows one of Swiftee's ===== */
+.stage.in-card.scene.plate .bubble,.stage.in-card.scene.plate .bubble.bubA,.stage.in-card.scene.plate .bubble.bubB{animation:none;opacity:1;transform:none;
+  interpolate-size:allow-keywords;transition:width .32s cubic-bezier(.3,0,.2,1),height .32s cubic-bezier(.3,0,.2,1),opacity .3s ease,transform .3s ease}
+.stage.in-card.scene.plate .bubble:not(:has(.w:not(.brk))){opacity:0}
+.stage.in-card.scene.plate .bubble.away,.stage.in-card.scene.plate .bubble.gone{opacity:0;transform:translateY(-6px)}
+.stage.in-card.scene.plate .bubble-text .w{opacity:.5;transition:opacity .22s ease}
+.stage.in-card.scene.plate .bubble-text .w.on,.stage.in-card.scene.plate .bubble-text .w.cur{opacity:1}
+.stage.in-card.scene.plate .bubA .bubble-text{animation:plateTextA .3s ease-out both}
+.stage.in-card.scene.plate .bubB .bubble-text{animation:plateTextB .3s ease-out both}
+@keyframes plateTextA{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+@keyframes plateTextB{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.stage.in-card.scene.plate.plate-enter .bubble{animation:plateEnter .42s cubic-bezier(.22,1,.36,1) both}
+@keyframes plateEnter{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.stage.in-card.scene.plate .bubble,.stage.in-card.scene.plate .bubble-text,.stage.in-card.scene.plate .bubble-text .w{animation:none!important;transition:none!important}}
+/* entering from Swiftee's bubble: the plate takes its own size at once (no stretch from the bubble's) and fades down */
+.stage.in-card.scene.plate.plate-enter .bubble{transition:none}
+/* equal-length ticks (sides and diagonal halves): crisp 3 px navy strokes that keep their weight at any shape size,
+   on a sharp white underlay (no blur) so a single or double tick reads cleanly where it crosses the blue side */
+.stage.in-card .ticks{stroke:#123b63!important;stroke-width:3px!important;vector-effect:non-scaling-stroke;stroke-linecap:round;filter:none!important}
+.stage.in-card .ticks-halo{stroke:#fff;stroke-width:7px;vector-effect:non-scaling-stroke;stroke-linecap:round;opacity:.95;pointer-events:none}
+.ticks-halo.fadein{transform-box:fill-box;transform-origin:center;animation:markIn .5s cubic-bezier(.3,1.6,.5,1) both}
+@media (prefers-reduced-motion: reduce){.ticks-halo.fadein{animation:fade .3s ease-out}}
+/* a solved checkpoint's found values settle onto the figure in the answer's green, so the finished figure reads complete */
+.stage.in-card .tag.mtag.solved,.stage.in-card .tag.alab.solved{color:#13824a!important;animation:solvedIn .45s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes solvedIn{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@media (prefers-reduced-motion: reduce){.stage.in-card .tag.solved{animation:none}}

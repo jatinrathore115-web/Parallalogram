@@ -23,7 +23,7 @@ const CONFIG = {
   limits: { minTop: 90, minBottom: 160, maxLegRun: 243, minX: 16, maxX: 478, maxTopX: 496 },
   // side markings (board px, scaled with the shape): parallel chevrons - half depth, half width, spacing between two;
   // equal-length ticks - half length, spacing; gap = how far each kind sits from the midpoint when a side has both
-  marks: { arrowDepth: 6, arrowWing: 7.5, arrowStep: 8, tickHalf: 9.5, tickStep: 7, gap: 18, labelGap: 20 }, // labelGap: a length label's distance from its side
+  marks: { arrowDepth: 6, arrowWing: 7.5, arrowStep: 8, tickHalf: 8, tickStep: 5.5, gap: 18, labelGap: 20 }, // labelGap: a length label's distance from its side
   // dropdown answers: one option's height, the menu's narrowest width, the lowest it may reach (stage px), close and
   // wrong-answer display times (ms)
   dropdown: { itemH: 46, minW: 120, maxBottom: 706, closeMs: 180, wrongMs: 1000 },
@@ -68,14 +68,15 @@ const CONFIG = {
   // zoomAt: where the zoomed shape's centre sits, in board px (stage = board + 651, 104): the panel's upper middle
   // the composition: shapes sit centre-right (45 px left of the old panel centre), question / checkpoint shapes 15% bigger
   // (qZoom, about their own centre, nudged up qLift so they keep clear of the answers); the card row and answers follow
-  // the card (reference fitPlate): the box each screen's shape is fitted into - box: explanation screens (the name
-  // plates go under the shape); boxQ: screens with answers (they go under it); boxQ3: three rows of answers. The
-  // padding round the shape for its letters (board px), the largest scale (the reference's own: its trapezium is 741 px
-  // wide on a 1920 page), extra room for a free drag, and where the plates and answers go (stage px)
-  card: { box: { cx: 640, cy: 332, w: 1160, h: 440 }, boxTop: { cx: 640, cy: 348, w: 1040, h: 276 }, boxMeasure: { cx: 728, cy: 332, w: 940, h: 440 }, rowsRoom: 46, okChipsRoom: 40, boxQ: { cx: 640, cy: 300, w: 1040, h: 340 }, boxQ3: { cx: 640, cy: 270, w: 1000, h: 280 },
-    boxIntro: { cx: 770, cy: 330, w: 760, h: 440 }, // screen 1: right of Swiftee and her bubble
-    padX: 60, padTop: 50, padBottom: 44, maxScale: 1.79, dragRoom: 40,
-    chipMax: 600, chipTopQ: 92, optGap: 26, optMax: 590, optW: 620 },
+  // the card (game-engine sceneFit / belowH / optRow): every screen stacks the shape and what sits under it, centred on the card
+  card: {
+    scale: 1.67,                     // the shape's one size on every screen (board px -> stage px; the first screens' size)
+    top: 96, topChips: 148, bottom: 682, // the stack's room: under the question plate (or under tags above the shape) to the sand
+    maxW: 1160, introCx: 770, introW: 760, measureCx: 728, measureW: 940, // widths; screen 1 and the measuring walk sit right of Swiftee
+    padX: 40, padTop: 34, padBottom: 34, lenPadX: 30, lenPadY: 26, dragRoom: 40, // room round the shape for letters / lengths (board px)
+    optGap: 16, optH: 74, optWrapH: 48, optGapX: 12, fillH: 56, tileH: 52, // answers under the shape (stage px)
+    chipGap: 8, chipLane: 70, rowsH: 135, chipTopQ: 92, // name tags: gap, one row, two rows, tags above the shape
+    optW: 620, pillPad: 40, pillPadLong: 28, pillMin: 200, rowMax: 1040 }, // answer pills (see optRow)
   board: { x: 640, y: 104 },
   scene: { boardX: 11, chipTop: 476, chipLeft: 571, zoom: 1.25, zoomAt: [180, 196], shiftX: -45, qZoom: 1.15, qLift: 8,
     // screen 13's measuring trip: the shape's centre at this stage point, this size, and the glide time before Swiftee sets off

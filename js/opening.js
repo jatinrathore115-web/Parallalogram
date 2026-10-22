@@ -3,7 +3,7 @@
 // src/pearl.js, src/game.js, src/sequences.js lessonCard): on the sand of the lake a seashell fades in, rattles twice
 // and swings open on its glowing pearl; the lake dims; the pearl blows a bubble that swells, lets go and rises,
 // growing, while the camera dives under the surface after it; mid-screen it pops and out springs the lesson's card -
-// the coral cove painting (assets/images/coral-cove.webp) - with the gentlest overshoot. The shell and the pearl's
+// the sea card (assets/images/sea-card.webp) - with the gentlest overshoot. The shell and the pearl's
 // light then fade, and the lesson plays on the card.
 //
 // Two canvases at page level, drawn in the journey's world units (1672 x 941; the page is 1920 x 1080):
@@ -17,11 +17,11 @@
 (function () {
   const W = 1672, H = 941, SCALE = 1920 / W, TAU = Math.PI * 2;
   // the card: the coral cove painting at the reference card's width, its own proportions (1672 x 941)
-  const CARD = { x: 836, y: 470, w: 1494, h: 1494 * 941 / 1672 };
+  const CARD = { x: 836, y: 470, w: 1494, h: 1494 * 828 / 1618 }; // the card keeps the sea card's own proportions
   const PEARL = { x: 836, y: 929, size: 1.12 };
   const BUBBLE = { radius: 290, seed: 62, blow: 0.3, pop: 0.78 };
   const DIVE_ZOOM = 1.85, DIM = 0.55, SEABED_Y = 805;
-  const ART = new Image(); ART.src = 'assets/images/coral-cove.webp';
+  const ART = new Image(); ART.src = 'assets/images/sea-card.webp'; // the sea card (assets/Sea Card.png, 1618 x 828, transparent corners)
   const reduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   const ease = {
     inOut: (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
@@ -292,14 +292,10 @@
     if (!(ART.complete && ART.naturalWidth)) return;
     ctx.save();
     ctx.translate(x, y); ctx.scale(k, k);
-    // the painting's square corners (outside its rounded frame) are cut away: shadow the frame's shape, then clip to it
-    const ins = CARD.w * 0.016, rr = CARD.w * 0.052, fx = -CARD.w / 2 + ins, fy = -CARD.h / 2 + ins, fw = CARD.w - 2 * ins, fh = CARD.h - 2 * ins;
-    ctx.beginPath(); ctx.roundRect(fx, fy, fw, fh, rr);
+    // the sea card has its own rounded, transparent corners: its shadow follows them
     ctx.shadowColor = 'rgba(0, 20, 60, 0.35)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 10;
-    ctx.fillStyle = '#0d63c9'; ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.clip();
     ctx.drawImage(ART, -CARD.w / 2, -CARD.h / 2, CARD.w, CARD.h);
+    ctx.shadowColor = 'transparent';
     if (S.flash > 0) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.45 * S.flash;

@@ -61,6 +61,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   }
   clearT() { this.T.forEach((id) => clearTimeout(id)); this.T.clear(); }
   componentDidMount() {
+    this.warmFonts();
     // Escape closes an open answer menu
     if (typeof document !== 'undefined') document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.state.fill && this.state.fill.open) this.ddClose(); });
     // the shape palette as CSS variables for css/game.css (--pg-sideA, --pg-fill, --pg-hl ...)
@@ -137,6 +138,37 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   // Shrink-wraps the speech bubble to its widest line. Wrapped text otherwise leaves the box at its max width
   // even when every line is shorter. Measures in layout px (offsetLeft/offsetWidth ignore the stage scale);
   // hidden words still take their place, so the size is final from the first word of a line.
+  warmFonts() {
+    if (this._fontsWarm || typeof document === 'undefined' || !document.fonts || !document.fonts.load) return;
+    this._fontsWarm = true;
+    ['500 21px Fredoka', '600 21px Fredoka', '700 21px Fredoka', '700 26px "Baloo 2"', '800 26px "Baloo 2"', '600 20px Nunito', '700 20px Nunito', '800 20px Nunito', '900 20px Nunito']
+      .forEach((f) => document.fonts.load(f).catch(() => {}));
+  }
+  // A solved checkpoint shows its finished figure: each '?' on the shape becomes the right value ('? cm' -> '7 cm',
+  // '?' at an angle -> '115°'), taken from the answer box with the same name or from the right answer button.
+  figVal(st, key, raw) {
+    if (!raw || raw.indexOf('?') < 0 || !this.state.done) return raw;
+    const flip = { DA: 'AD', AD: 'DA', BC: 'CB', CD: 'DC' };
+    const b = st.fill && (st.fill.blanks || []).find((x) => x.id === key || x.id === flip[key]);
+    let v = b ? b.ans : null, unit = b ? (b.post || '').trim() : '';
+    if (v == null && st.opts) {
+      const o = st.opts.find((x) => x.ok), m = o && String(o.t).match(/^([\d.]+)\s*(.*)$/);
+      if (m) { v = m[1]; unit = m[2]; }
+    }
+    if (v == null) return raw;
+    if (raw.trim() === '?') return v + (unit === '°' ? '°' : unit ? ' ' + unit : '');
+    return raw.replace('?', v);
+  }
+  // the half-diagonals a solved checkpoint found: from answer boxes named OC / OD, or (one answer button) the half
+  // opposite the given one through O
+  figHalves(st) {
+    const fig = st.fig || {}, out = {};
+    if (!fig.halves || !this.state.done) return out;
+    ((st.fill && st.fill.blanks) || []).forEach((b) => { if (/^O[A-D]$/.test(b.id) && !fig.halves[b.id[1]]) out[b.id[1]] = b.ans + ' ' + ((b.post || 'cm').trim()); });
+    const o = st.opts && st.opts.find((x) => x.ok), opp = { A: 'C', C: 'A', B: 'D', D: 'B' };
+    if (o) Object.keys(fig.halves).forEach((k) => { if (!fig.halves[opp[k]] && !out[opp[k]]) out[opp[k]] = o.t; });
+    return out;
+  }
   fitBubble() {
     if (typeof document === 'undefined') return;
     const box = document.querySelector('.bubble'), txt = box && box.querySelector('.bubble-text');
@@ -159,7 +191,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     // a web font that finishes loading later is wider: fit again then
     if (!this.fontHook && document.fonts && document.fonts.addEventListener) {
       this.fontHook = true;
-      document.fonts.addEventListener('loadingdone', () => { this.fitKey = null; this.fitBubble(); });
+      document.fonts.addEventListener('loadingdone', () => { this.fitKey = null; this.fitBubble(); this.setState({ fontsAt: Date.now() }); }); // the answer row re-measures in the loaded font
       if (document.fonts.ready) document.fonts.ready.then(() => { this.fitKey = null; this.fitBubble(); });
     }
   }
@@ -2003,7 +2035,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       const isRight = Math.abs(this.angle(P, k) - 90) < 0.5;
       // when several angles light up together they draw in one after another
       const stag = (f.arcs || '').length > 1 ? ' d' + (f.arcs || '').indexOf(k) : '';
-      g['a' + k] = { p: 'M' + r1(sx) + ',' + r1(sy) + ' A' + R + ',' + R + ' 0 0 ' + (cross > 0 ? 1 : 0) + ' ' + r1(ex) + ',' + r1(ey), d: dsp(show), cls: 'arc k' + k + stag + pairCls(k) + (em['a' + k] ? ' emph' : '') + aDim(k), o: r1(Vk.x) + 'px ' + r1(Vk.y) + 'px' };
+      g['a' + k] = { p: 'M' + r1(sx) + ',' + r1(sy) + ' A' + R + ',' + R + ' 0 0 ' + (cross > 0 ? 1 : 0) + ' ' + r1(ex) + ',' + r1(ey), d: dsp(show), cls: 'arc k' + k + stag + pairCls(k) + (em['a' + k] ? ' emph' : '') + (fig && s.done ? '' : aDim(k)), o: r1(Vk.x) + 'px ' + r1(Vk.y) + 'px' };
       const q = 15;
       g['r' + k] = {
         p: 'M' + r1(Vk.x + u.x * q) + ',' + r1(Vk.y + u.y * q) + ' L' + r1(Vk.x + u.x * q + v.x * q) + ',' + r1(Vk.y + u.y * q + v.y * q) + ' L' + r1(Vk.x + v.x * q) + ',' + r1(Vk.y + v.y * q),
@@ -2011,7 +2043,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       };
 
       let bx = u.x + v.x, by = u.y + v.y; const bl = Math.hypot(bx, by) || 1; bx /= bl; by /= bl;
-      const at = fig ? (fig.angles || {})[k] || '' : V[k] + '°';
+      const at = fig ? this.figVal(this.cur(), k, (fig.angles || {})[k] || '') : V[k] + '°';
       // how far along the bisector the label's centre must be: its box (w x h, estimated from the text) has to clear
       // each side by `gap` (the box's reach toward a side is w/2|nx| + h/2|ny| for that side's normal n), and clear the
       // arc (radius + half its stroke + gap, plus the box's reach back toward the vertex)
@@ -2026,7 +2058,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       const len = at.length || 1, wN = 14 + 10.5 * len, wS = 12 + 8.6 * len;
       let small = false, dl = need(wN, AS.labH);
       if (dl > room) { small = true; dl = need(wS, AS.labHsm); }
-      aTag[k] = { t: at, x: r1(Vk.x + bx * dl), y: r1(Vk.y + by * dl), cls: 'alab' + (small ? ' sm' : '') + stag + (show ? '' : ' off') + (at.indexOf('?') >= 0 ? ' q' : '') + (em['a' + k] ? ' emph' : '') + aDim(k) };
+      aTag[k] = { t: at, x: r1(Vk.x + bx * dl), y: r1(Vk.y + by * dl), cls: 'alab' + (small ? ' sm' : '') + stag + (show ? '' : ' off') + (at.indexOf('?') >= 0 ? ' q' : fig && ((fig.angles || {})[k] || '').indexOf('?') >= 0 ? ' solved' : '') + (em['a' + k] ? ' emph' : '') + (fig && s.done ? '' : aDim(k)) };
     });
     // vertices
     const dk = this.dragKey();
@@ -2097,10 +2129,11 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     // a checkpoint's half-diagonal labels (e.g. AO = 6 cm), beside the middle of each half
     if (fig && fig.halves) {
       const Om = { x: (A.x + C.x) / 2, y: (A.y + C.y) / 2 };
-      Object.keys(fig.halves).forEach((k) => {
+      const found = this.figHalves(this.cur()), H = Object.assign({}, fig.halves, found);
+      Object.keys(H).forEach((k) => {
         const m = { x: (Om.x + P[k].x) / 2, y: (Om.y + P[k].y) / 2 }, L = this.dist(Om, P[k]) || 1;
         let nx = -(P[k].y - Om.y) / L, ny = (P[k].x - Om.x) / L; if (ny > 0) { nx = -nx; ny = -ny; } // the upper side
-        tags.push({ t: fig.halves[k], x: r1(m.x + nx * 24), y: r1(m.y + ny * 24), cls: 'mtag fig' });
+        tags.push({ t: H[k], x: r1(m.x + nx * 34 + (P[k].x - Om.x) / L * 10), y: r1(m.y + ny * 34 + (P[k].y - Om.y) / L * 10), cls: 'mtag fig' + (found[k] ? ' solved' : '') });
       });
     }
     // a tag beside a side, pushed out along the side's outward normal far enough that its box clears the line
@@ -2158,7 +2191,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
     tags.push(side(D, C, this.cm(this.dist(D, C)), 'mtag', !!f.sideLen && lon('CD')));
     if (fig && fig.sides) {
       const E = { AB: [A, B], BC: [B, C], CD: [D, C], DA: [D, A] };
-      Object.keys(fig.sides).forEach((k) => tags.push(side(E[k][0], E[k][1], fig.sides[k], 'mtag fig' + (fig.sides[k].indexOf('?') >= 0 ? ' q' : ''), true)));
+      Object.keys(fig.sides).forEach((k) => { const t = this.figVal(this.cur(), k, fig.sides[k]); tags.push(side(E[k][0], E[k][1], t, 'mtag fig' + (t.indexOf('?') >= 0 ? ' q' : fig.sides[k].indexOf('?') >= 0 ? ' solved' : ''), true)); });
     }
     // sideNums (screen 2): the four sides numbered clockwise from the left (storyboard page 2): 1 left, 2 top, 3 right,
     // 4 bottom - each number flies in from its
@@ -2196,21 +2229,40 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   // than the reference's own scale (CONFIG.card.maxScale), and centred on it. A screen with answers under the shape
   // uses a shorter box higher up, so the answers have the bottom of the card. Returns the scale, the shape point that
   // sits at the box's centre, and the shape's bottom on the stage (the name plates and answers go under it).
+  // One size on every screen: the shape is always drawn at CONFIG.card.scale (the first screens' size), so it never grows
+  // or shrinks between screens. Each screen is a vertical stack - the shape (padded for its letters and labels), then
+  // the block under it (answers, answer boxes, or the lane for name tags) - centred between the question plate and the
+  // sand. Only a stack that could not fit at that size is drawn smaller (none in this lesson). Returns the scale, the
+  // shape point placed at F (stage px), and the stack's shape bottom (where the answers / name tags start).
   sceneFit(st) {
-    const C = CONFIG.card, L = CONFIG.limits, P0 = st.fig ? st.fig.P : ((this.snaps && this.snaps[this.state.step]) || this.state.P);
-    const top = st.chipTop && st.chipTop < 200 && !st.practice; // its chips sit above the shape: the box starts under them
-    let F = st.id === 'intro' && C.boxIntro ? C.boxIntro : st.task === 'measure' && C.boxMeasure ? C.boxMeasure : top && C.boxTop ? C.boxTop : st.opts || st.fill ? (st.optWrap ? C.boxQ3 : C.boxQ) : C.box;
-    // a question whose answer adds name tags above the shape: the box starts below them, so they never touch a corner letter
-    if (st.practice && st.okChips && F !== C.boxIntro) F = { cx: F.cx, cy: F.cy + C.okChipsRoom / 2, w: F.w, h: F.h - C.okChipsRoom };
+    const C = CONFIG.card, P0 = st.fig ? st.fig.P : ((this.snaps && this.snaps[this.state.step]) || this.state.P);
     let x0 = Math.min(P0.A.x, P0.D.x), x1 = Math.max(P0.B.x, P0.C.x);
     const y0 = Math.min(P0.A.y, P0.B.y), y1 = Math.max(P0.C.y, P0.D.y);
     if (st.task === 'dragB') x1 = Math.max(x1, P0.C.x + (P0.A.x - P0.D.x)); // B slides out until BC is parallel to AD
-    if (/^drag(Free|Any|90)$/.test(st.task || '')) { x0 = Math.min(x0, x0 - C.dragRoom); x1 = Math.max(x1, x1 + C.dragRoom); }
+    if (/^drag(Free|Any|90)$/.test(st.task || '')) { x0 -= C.dragRoom; x1 += C.dragRoom; }
     const f = st.f || {}, lengths = !!(f.sideLen || f.legLen || st.task === 'measure' || (st.fig && st.fig.sides));
-    const padX = C.padX + (lengths ? 44 : 0), padB = C.padBottom + (f.sums ? 34 : 0) + (lengths ? 26 : 0) + (st.chipRows ? C.rowsRoom : 0), padT = C.padTop + (lengths ? 26 : 0);
-    const k = Math.min(C.maxScale, F.w / (x1 - x0 + 2 * padX), F.h / (y1 - y0 + padT + padB));
-    const cx = (x0 + x1) / 2, cy = (y0 - padT + y1 + padB) / 2;
-    return { k: k, cx: cx, cy: cy, F: F, bottom: F.cy + (y1 + (lengths ? 26 : 0) + 30 - cy) * k };
+    const padX = C.padX + (lengths ? C.lenPadX : 0), padT = C.padTop + (lengths ? C.lenPadY : 0), padB = C.padBottom + (lengths ? C.lenPadY : 0) + (f.sums ? 34 : 0);
+    const w = x1 - x0 + 2 * padX, h = y1 - y0 + padT + padB;
+    const above = (st.chipTop && st.chipTop < 200 && !st.practice) || (st.practice && st.okChips); // name tags above the shape
+    const top = above ? C.topChips : C.top, below = this.belowH(st);
+    const cxS = st.id === 'intro' ? C.introCx : st.task === 'measure' ? C.measureCx : 640;
+    const maxW = st.id === 'intro' ? C.introW : st.task === 'measure' ? C.measureW : C.maxW;
+    const k = Math.min(C.scale, maxW / w, (C.bottom - top - below) / h);
+    const y = top + Math.max(0, (C.bottom - top - h * k - below) / 2);
+    return { k: k, cx: (x0 + x1) / 2, cy: (y0 - padT + y1 + padB) / 2, F: { cx: cxS, cy: y + h * k / 2 }, bottom: y + h * k };
+  }
+  // the height of what sits under the shape (stage px, with its gap): the answer row(s), the answer boxes (and their
+  // tiles), or the name-tag lane - reserved on every explanation screen so the shape keeps one place from screen to screen
+  belowH(st) {
+    const C = CONFIG.card;
+    if (st.opts) {
+      if (!st.optWrap) return C.optGap + C.optH;
+      const rows = Math.ceil(st.opts.filter((o) => !o.wide).length / 2) + st.opts.filter((o) => o.wide).length;
+      return C.optGap + rows * C.optWrapH + (rows - 1) * C.optGapX;
+    }
+    if (st.fill) return C.optGap + C.fillH + (st.fill.match ? C.optGapX + C.tileH : 0);
+    if (st.practice) return 0;
+    return C.chipGap + (st.chipRows ? C.rowsH : C.chipLane);
   }
   zoomTf(st) {
     const Z = this.sceneFit(st), B = CONFIG.board || { x: 640, y: 104 };
@@ -2218,6 +2270,30 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   }
   // a caption screen (reference isPlate): no Swiftee - her line is the navy plate across the top. She stays where she
   // does something: the first screen (she arrives and speaks), the measuring walk and the end
+  // The answer row on the card: every pill as wide as the longest answer needs (measured in the pill's own font, as
+  // css/game.css sizes it) plus even padding, never narrower than a comfortable tap target; the row is centred under the
+  // shape. Two-column rows (optWrap) use the same width per column, and a 'wide' answer spans the row.
+  optRow(st) {
+    const C = CONFIG.card, O = st.opts || [], wrap = !!st.optWrap, gap = C.optGapX;
+    if (!O.length) return { w: C.optW, left: 640 - C.optW / 2 };
+    let m = this._measure;
+    if (m === undefined) { try { m = document.createElement('canvas').getContext('2d') || null; } catch (e) { m = null; } this._measure = m; }
+    if (!m) m = { font: '', measureText: (t) => ({ width: t.length * (parseFloat(m.font.slice(4)) || 26) * 0.52 }) }; // no canvas (headless test): an estimate
+    const textW = (o) => { const t = o.t || o.id, long = t.length > 14; m.font = '700 ' + (long ? 19 : wrap ? 22 : 26) + "px 'Baloo 2', system-ui, sans-serif"; return m.measureText(t).width + 2 * (long ? C.pillPadLong : C.pillPad); };
+    const narrow = O.filter((o) => !o.wide), cols = wrap ? 2 : narrow.length;
+    let pw = Math.max(C.pillMin, ...narrow.map(textW));
+    pw = Math.min(pw, (C.rowMax - gap * (cols - 1)) / cols);
+    let w = cols * pw + gap * (cols - 1);
+    O.filter((o) => o.wide).forEach((o) => { w = Math.max(w, textW(o)); });
+    w = Math.ceil(Math.min(w, C.rowMax));
+    return { w: w, left: Math.round(640 - w / 2) };
+  }
+  // the plate glides in once when a screen with Swiftee's bubble hands over to a caption screen (not on every line)
+  plateEnter(st) {
+    const step = this.state.step;
+    if (this._plateStep !== step) { this._plateIn = !this._plateWas; this._plateWas = this.isPlate(st); this._plateStep = step; }
+    return this._plateIn && this._plateWas;
+  }
   isPlate(st) { return !!(this.state.opened && st && st.id !== 'intro' && st.task !== 'measure' && !st.end); }
   renderVals() {
     const s = this.state, steps = this.steps(), st = this.cur();
@@ -2350,10 +2426,10 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       wordSize: wi > 15 || (s.line || '').length > 80 ? 22 : 24, // long lines get the smaller size
       c1: c1, hasOpts: hasOpts, opts: opts,
       // qFocus: shape centred in the panel with the answers in a row under it (CONFIG.qFocus); otherwise the usual right column
-      optTop: scene && isLesson ? Math.round(Math.min(CONFIG.card.optMax, this.sceneFit(st).bottom + CONFIG.card.optGap)) : st.qFocus && s.qc ? CONFIG.qFocus.optTop : st.optTop || 376,
-      optLeft: scene ? 640 - CONFIG.card.optW / 2 : st.qFocus && s.qc ? CONFIG.qFocus.cx - CONFIG.qFocus.optW / 2 : 650,
-      optW: scene ? CONFIG.card.optW : st.qFocus && s.qc ? CONFIG.qFocus.optW : 504, optCls: fadeV + (st.qFocus ? ' opts-in' : '') + (this.busy() ? ' wait' : ' go') + (st.optWrap ? ' wrap' : '') + (st.multi ? ' multi' : '') + (st.soloOk ? ' solo-ok' : ''),
-      qx: CONFIG.qFocus.cx - 250, qy: s.qc ? CONFIG.qFocus.shapeTop : CONFIG.qFocus.shapeTop0, chipTop: scene && isLesson ? (st.practice || (st.chipTop && st.chipTop < 200) ? CONFIG.card.chipTopQ : Math.round(Math.min(CONFIG.card.chipMax, this.sceneFit(st).bottom + 8))) : st.chipTop || 528, chipLeft: scene ? 380 : 602, // answers centred under the shape
+      optTop: scene && isLesson ? Math.round(this.sceneFit(st).bottom + CONFIG.card.optGap) : st.qFocus && s.qc ? CONFIG.qFocus.optTop : st.optTop || 376,
+      optLeft: scene ? this.optRow(st).left : st.qFocus && s.qc ? CONFIG.qFocus.cx - CONFIG.qFocus.optW / 2 : 650,
+      optW: scene ? this.optRow(st).w : st.qFocus && s.qc ? CONFIG.qFocus.optW : 504, optCls: fadeV + (st.qFocus ? ' opts-in' : '') + (this.busy() ? ' wait' : ' go') + (st.optWrap ? ' wrap' : '') + (st.multi ? ' multi' : '') + (st.soloOk ? ' solo-ok' : ''),
+      qx: CONFIG.qFocus.cx - 250, qy: s.qc ? CONFIG.qFocus.shapeTop : CONFIG.qFocus.shapeTop0, chipTop: scene && isLesson ? (st.practice || (st.chipTop && st.chipTop < 200) ? CONFIG.card.chipTopQ : Math.round(this.sceneFit(st).bottom + CONFIG.card.chipGap)) : st.chipTop || 528, chipLeft: scene ? 380 : 602, // answers centred under the shape
       celebrate: st.id === 'wellDone',
       labs: labs, slots: slots,
       stars: [0, 1, 2].map((i) => ({ cls: i < nStars ? 'on' : '' })),
@@ -2367,7 +2443,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       nextCls: CONFIG.flow.showNext && st.autoAdvance == null ? (s.done && !s.talking ? 'ready' : '') : 'auto', // screens move on by themselves
       nextLabel: isLastCfu ? 'Finish' : 'Next',
       // spotlight: the board (shape + its labels) glides to centre stage and grows; Swiftee moves right; no bubble
-      sceneCls: (s.opened ? 'in-card ' : s.opening ? 'card-wait ' : 'pre-open ') + (scene ? 'scene' : '') + (this.isPlate(st) ? ' plate' : '') + (st.skin ? ' skin-' + st.skin : '') + (st.enterGrow || st.okGlow || (st.lines || []).some((L) => L.cues) ? ' cue-pulse' : ''), // skin: a screen's own look (css/game.css)
+      sceneCls: (s.opened ? 'in-card ' : s.opening ? 'card-wait ' : 'pre-open ') + (scene ? 'scene' : '') + (this.plateEnter(st) ? ' plate plate-enter' : this.isPlate(st) ? ' plate' : '') + (st.skin ? ' skin-' + st.skin : '') + (st.enterGrow || st.okGlow || (st.lines || []).some((L) => L.cues) ? ' cue-pulse' : ''), // skin: a screen's own look (css/game.css)
       boardTf: scene ? this.zoomTf(st) : spot ? tf(CONFIG.spotlight) : (st.layout === 'focus' && s.centered ? tf(CONFIG.focus) : (st.layout === 'top' ? tf(CONFIG.topLayout) : (st.boardShift || st.boardShiftY ? 'translate(' + (st.boardShift || 0) + 'px, ' + (st.boardShiftY || 0) + 'px)' : 'none'))),
       boardCls: fadeV + (st.assemble ? ' asm' : ''), // fade class + assemble (screen 4): the four sides fly in and form the shape - all in CSS (.asm)
       spotFill: spot ? 'spot' : '', // (screen 1 build: Motion hides the fill and fades it in last)
