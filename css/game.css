@@ -821,3 +821,12 @@ a{color:#123b63}a:hover{color:#0b2742}
 .stage.in-card .tag.mtag.solved,.stage.in-card .tag.alab.solved{color:#13824a!important;animation:solvedIn .45s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes solvedIn{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @media (prefers-reduced-motion: reduce){.stage.in-card .tag.solved{animation:none}}
+/* answer box value: a chosen number is the focus - larger (30px), even-width digits, optically centred in its box;
+   once locked the arrow leaves and the value sits dead centre (same box size, so nothing around it shifts). The green
+   answer-button text shadow is not used here: on the pale green box it doubled the digit. */
+.stage .blank.dd .dd-val{flex:1 1 auto;text-align:center;font-variant-numeric:tabular-nums lining-nums}
+.stage .blank.dd .dd-val:not(.ph){font-size:30px;line-height:1;padding-top:3px}
+.stage .blank.dd.good{justify-content:center;text-shadow:none!important;padding:0 14px}
+.stage .blank.dd.good .dd-val{flex:0 0 auto;font-weight:800;color:#17692c;text-shadow:none}
+.stage .blank.dd.good .dd-chev{display:none}
+.stage .blank.dd.bad{text-shadow:none!important}

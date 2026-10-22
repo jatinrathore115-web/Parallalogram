@@ -146,6 +146,12 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
   }
   // A solved checkpoint shows its finished figure: each '?' on the shape becomes the right value ('? cm' -> '7 cm',
   // '?' at an angle -> '115°'), taken from the answer box with the same name or from the right answer button.
+  textW(text, font) {
+    let m = this._measure;
+    if (m === undefined) { try { m = document.createElement('canvas').getContext('2d') || null; } catch (e) { m = null; } this._measure = m; }
+    if (!m) return text.length * (parseFloat(font.split(' ')[1]) || 22) * 0.56;
+    m.font = font + ', system-ui, sans-serif'; return m.measureText(text).width;
+  }
   figVal(st, key, raw) {
     if (!raw || raw.indexOf('?') < 0 || !this.state.done) return raw;
     const flip = { DA: 'AD', AD: 'DA', BC: 'CB', CD: 'DC' };
@@ -2055,7 +2061,7 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       };
       // room: stay well short of the far corners (half the shorter neighbouring side)
       const room = 0.5 * Math.min(this.dist(Vk, P[n[0]]), this.dist(Vk, P[n[1]]));
-      const len = at.length || 1, wN = 14 + 10.5 * len, wS = 12 + 8.6 * len;
+      const len = Math.max(4, at.length || 1), wN = 14 + 10.5 * len, wS = 12 + 8.6 * len; // at least '110°' wide: the same radius for every label
       let small = false, dl = need(wN, AS.labH);
       if (dl > room) { small = true; dl = need(wS, AS.labHsm); }
       aTag[k] = { t: at, x: r1(Vk.x + bx * dl), y: r1(Vk.y + by * dl), cls: 'alab' + (small ? ' sm' : '') + stag + (show ? '' : ' off') + (at.indexOf('?') >= 0 ? ' q' : fig && ((fig.angles || {})[k] || '').indexOf('?') >= 0 ? ' solved' : '') + (em['a' + k] ? ' emph' : '') + (fig && s.done ? '' : aDim(k)) };
@@ -2131,9 +2137,9 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       const Om = { x: (A.x + C.x) / 2, y: (A.y + C.y) / 2 };
       const found = this.figHalves(this.cur()), H = Object.assign({}, fig.halves, found);
       Object.keys(H).forEach((k) => {
-        const m = { x: (Om.x + P[k].x) / 2, y: (Om.y + P[k].y) / 2 }, L = this.dist(Om, P[k]) || 1;
-        let nx = -(P[k].y - Om.y) / L, ny = (P[k].x - Om.x) / L; if (ny > 0) { nx = -nx; ny = -ny; } // the upper side
-        tags.push({ t: H[k], x: r1(m.x + nx * 34 + (P[k].x - Om.x) / L * 10), y: r1(m.y + ny * 34 + (P[k].y - Om.y) / L * 10), cls: 'mtag fig' + (found[k] ? ' solved' : '') });
+        const nb = { A: 'B', B: 'A', C: 'D', D: 'C' }[k], M = { x: (P[k].x + P[nb].x) / 2, y: (P[k].y + P[nb].y) / 2 };
+        const g = { x: 0.28 * Om.x + 0.3 * P[k].x + 0.42 * M.x, y: 0.28 * Om.y + 0.3 * P[k].y + 0.42 * M.y }; // toward the side: clear of the tick at the half's midpoint
+        tags.push({ t: H[k], x: r1(g.x), y: r1(g.y), cls: 'mtag fig' + (found[k] ? ' solved' : '') });
       });
     }
     // a tag beside a side, pushed out along the side's outward normal far enough that its box clears the line
@@ -2141,18 +2147,11 @@ window.TrapeziumGame = class TrapeziumGame extends DCLogic {
       const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, L = this.dist(p, q) || 1;
       let nx = -(q.y - p.y) / L, ny = (q.x - p.x) / L;
       if (nx * (mx - cx) + ny * (my - cy) < 0) { nx = -nx; ny = -ny; }
-      const hw = (text.length * 9.6 + 32) / 2, hh = 16;
-      const off = hw * Math.abs(nx) + hh * Math.abs(ny) + (CONFIG.marks.labelGap || 12); // clear of the side and its marks
-      // outside the shape first; if the board edge would push it back onto the side, tuck it inside instead
-      const need = hw * Math.abs(nx) + hh * Math.abs(ny) + 4;
-      const place = (sg) => {
-        const x = Math.max(hw - 70, Math.min(516 - hw, mx + sg * nx * off)) /* the panel has room left of the board */, y = Math.max(18, Math.min(404, my + sg * ny * off));
-        return { x: x, y: y, ok: Math.abs(nx * (x - mx) + ny * (y - my)) >= need };
-      };
-      let pos = place(1);
-      if (!pos.ok) pos = place(-1);
-      const x = pos.x, y = pos.y;
-      return { t: text, x: r1(x), y: r1(y), cls: cls + (show ? '' : ' off') };
+      // the label's own box (css: plain 22px Nunito 900, no padding): half width / half height in board px
+      const hw = this.textW(text, '900 22px Nunito') / 2, hh = 14;
+      // its nearest point is labelGap clear of the side - the same gap on every side, past the ticks and arrows
+      const off = hw * Math.abs(nx) + hh * Math.abs(ny) + (CONFIG.marks.labelGap || 12);
+      return { t: text, x: r1(mx + nx * off), y: r1(my + ny * off), cls: cls + (show ? '' : ' off') };
     };
     {
       const on = !!f.sums;

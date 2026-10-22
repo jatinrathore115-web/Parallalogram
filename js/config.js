@@ -23,7 +23,7 @@ const CONFIG = {
   limits: { minTop: 90, minBottom: 160, maxLegRun: 243, minX: 16, maxX: 478, maxTopX: 496 },
   // side markings (board px, scaled with the shape): parallel chevrons - half depth, half width, spacing between two;
   // equal-length ticks - half length, spacing; gap = how far each kind sits from the midpoint when a side has both
-  marks: { arrowDepth: 6, arrowWing: 7.5, arrowStep: 8, tickHalf: 8, tickStep: 5.5, gap: 18, labelGap: 20 }, // labelGap: a length label's distance from its side
+  marks: { arrowDepth: 6, arrowWing: 7.5, arrowStep: 8, tickHalf: 8, tickStep: 5.5, gap: 18, labelGap: 17 }, // labelGap: a length label's distance from its side
   // dropdown answers: one option's height, the menu's narrowest width, the lowest it may reach (stage px), close and
   // wrong-answer display times (ms)
   dropdown: { itemH: 46, minW: 120, maxBottom: 706, closeMs: 180, wrongMs: 1000 },
