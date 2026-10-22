@@ -32,7 +32,7 @@
 const PG = { par: 1, par2: 1 };                       // both pairs of sides marked parallel
 const LENS = { sideLen: 1, legLen: 1 };               // all four side lengths (measured from the shape)
 const DIAG = { diag: 1, O: 1 };                       // the two diagonals and their meeting point O
-const PRACTICE = { practice: 1, optTop: 486, chipTop: 105, boardShiftY: -16 };
+const PRACTICE = { practice: 1, optTop: 486, chipTop: 88, boardShiftY: -16 };
 // checkpoint figures (board coordinates; the board's top-left is stage 651,104)
 const deg = Math.PI / 180;
 const tilt = (a) => ({ A: { x: 90, y: 112 }, B: { x: 390, y: 112 },
@@ -70,8 +70,14 @@ const LESSON = {
     { pdf: 9, id: 'bothPar', lines: [
       { m: 'surprised', t: 'Now both pairs of opposite\nsides are parallel.', glow: ['AB', 'CD'], chips: [{ t: 'AB ∥ CD', k: 'white' }] },
       { keep: 1, s: 'A D is parallel to B C.', glow: ['DA', 'BC'], chips: [{ t: 'AD ∥ BC', k: 'white' }] }], f: PG },
-    { pdf: 10, id: 'defPg', lines: [{ t: 'We call this a Parallelogram.', pulse: 1, pulseAt: 'parallelogram',
-      chips: [{ t: 'AB ∥ CD', k: 'white' }, { t: 'AD ∥ BC', k: 'white' }, { t: 'Parallelogram', k: 'name' }] }], f: PG },
+    // screen 9 (storyboard page 10): the cards come in under the shape with the voice, as on screen 10 - "We": AB ∥ CD
+    // pops in as AB and CD glow; "this": AD ∥ BC as AD and BC glow (the shape she points at); "Parallelogram": the
+    // name lands on its own row below the pair, the whole outline glows once and the shape pulses
+    { pdf: 10, id: 'defPg', chipRows: 1, boardShiftY: -48, chipTop: 428,
+      lines: [{ t: 'We call this a Parallelogram.', cues: [
+        { at: 'we', chip: { t: 'AB ∥ CD', k: 'white' }, glow: ['AB', 'CD'], hi: 'AB ∥ CD' },
+        { at: 'this', chip: { t: 'AD ∥ BC', k: 'white' }, glow: ['DA', 'BC'], hi: 'AD ∥ BC' },
+        { at: 'parallelogram', chip: { t: 'Parallelogram', k: 'name' }, glow: ['AB', 'BC', 'CD', 'DA'], pulse: 1, ms: 1300 }] }], f: PG },
     // screen 10 (storyboard page 11): the shape scales up, then letters, arrows and the two pair cards; as Swiftee
     // says it, AB + CD glow with their card, then AD + BC with theirs; "parallelogram" pops the name card in on its
     // own row and the whole outline glows once

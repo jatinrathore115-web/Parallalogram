@@ -13,7 +13,7 @@ const c=new Component({});
 const realTm=c.tm.bind(c);
 c.tm=function(fn,ms){return realTm(fn,Math.max(0,ms/40));};
 const holes=[...tpl.matchAll(/\{\{\s*([^}]+?)\s*\}\}/g)].map(m=>m[1]).filter(h=>!/^(true|false)$/.test(h));
-const loops={bk:'blanks',tl:'tiles',th:'thumbs',tg:'tags',o:'opts',sl:'slots',lb:'labs',st:'stars',cp:'chips',wd:'words'};
+const loops={mi:'menuItems',bk:'blanks',tl:'tiles',th:'thumbs',tg:'tags',o:'opts',sl:'slots',lb:'labs',st:'stars',cp:'chips',wd:'words'};
 const get=(o,p)=>p.split('.').reduce((a,k)=>a==null?undefined:a[k],o);
 const errs=[];
 function check(label){

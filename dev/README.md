@@ -233,3 +233,22 @@ cm numbers, and rises into her hand (exact per-frame hand points: `CONFIG.walker
 stays laid out until the next side starts, and after the fourth side she flies home and the screen moves on. Code: `js/walker.js`,
 `autoMeasure()` / `measureLeg()` in `js/game-engine.js`; timings in `CONFIG.walker`. The walk sheet comes from the draft
 `swiftee-assets/source/drafts/swiftee-measuring-draft.png` via `node dev/tools/build-measuring-sheet.js <png> 4 2` + `node dev/tools/build-swiftee-manifest.js`.
+
+## Water background (all screens)
+
+One shared Canvas 2D layer (`canvas.water-bg` in `index.html`, drawn by `js/water.js`) sits behind every screen; it
+replaced the winter picture and the snowfall (`js/snowfall.js` is no longer loaded). It shows
+`assets/water background theme.png`, fitted to the stage by height so the water line is exactly where it is in the
+painting (about 23 px of its width falls beyond each side of the 16:9 stage).
+
+- **Water**: the painting is scaled once into an offscreen canvas; each frame copies it 1:1 and redraws only the water
+  surface band and the underwater area in thin rows, each nudged sideways on two slow sine waves (the painted ripples
+  and light lines refract; sky, mountains and shoreline never move). Soft light shafts breathe and drift, a few glints
+  sparkle on the surface, and bubbles rise from the bubble spots in the painting.
+- **Grass**: `node dev/tools/build-water.js` cuts the grass tufts out of the painting (green-led pixels on the sea
+  floor) into `assets/images/water-grass-N.png`, fills the water in behind them (`assets/images/water-bg.webp`) and
+  writes `js/water-manifest.js`. Each tuft is drawn in thin slices and rows that bend more toward the tip, so the base
+  stays planted and neighbouring blades sway slightly out of step. Re-run the tool after changing the painting.
+- **Behaviour**: one `requestAnimationFrame` loop for the whole session (screen changes never restart it); time only
+  runs while frames are drawn, so a hidden tab resumes smoothly; on a slow device it draws every other frame; still for
+  `prefers-reduced-motion` and in thumbnail captures. Measured: 60 fps in headless Chrome (software rendering).

@@ -13,7 +13,7 @@
   try { canOgg = !!(el && el.canPlayType('audio/ogg; codecs="opus"')); } catch (e) {}
   const lines = typeof VO_LINES !== 'undefined' ? VO_LINES : {};
   const src = (id) => 'assets/vo/' + id + '.ogg';
-  let tok = 0, played = false, unlocked = false;
+  let tok = 0, played = false, unlocked = false, unlocking = null; // unlocking: the muted unlock play() still settling
 
   const VO = {
     on: !!el && canOgg && q('vo') !== '0' && Object.keys(lines).length > 0,
@@ -30,8 +30,8 @@
       try {
         el.muted = true; el.src = src(first[0]);
         const p = el.play();
-        const done = () => { if (t === tok && !played) { try { el.pause(); } catch (e) {} } el.muted = false; };
-        if (p && p.then) p.then(done, done); else done();
+        const done = () => { unlocking = null; if (t === tok && !played) { try { el.pause(); } catch (e) {} } el.muted = false; };
+        if (p && p.then) unlocking = p.then(done, done); else done();
       } catch (e) { el.muted = false; }
     },
     // plays a line's clip; returns false at once if there is none. cb: start() as the voice starts, end() as it ends,
@@ -46,12 +46,29 @@
       el.onplaying = () => { if (live() && !started) { started = true; if (cb.start) cb.start(); } };
       el.onended = () => { if (live()) { tok++; if (cb.end) cb.end(); } };
       el.onerror = () => { if (!live()) return; tok++; if (started) { if (cb.end) cb.end(); } else if (cb.fail) cb.fail(); };
-      try {
-        el.src = src(lines[key][0]);
-        el.playbackRate = VO.rate;
-        const p = el.play();
-        if (p && p.catch) p.catch(() => { if (live() && !started) { tok++; if (cb.fail) cb.fail(); } });
-      } catch (e) { tok++; if (cb.fail) cb.fail(); }
+      const go = () => {
+        if (!live()) return;
+        el.muted = false;
+        try {
+          el.src = src(lines[key][0]);
+          el.playbackRate = VO.rate;
+          // an interrupted play() (AbortError: a pause or a new load got in first) is retried once before giving up
+          let retried = false;
+          const tryPlay = () => {
+            const p = el.play();
+            if (p && p.catch) p.catch((e) => {
+              VO.lastError = (e && e.name) + ': ' + (e && e.message);
+              if (!live() || started) return;
+              if (e && e.name === 'AbortError' && !retried) { retried = true; setTimeout(() => { if (live() && !started) tryPlay(); }, 60); return; }
+              tok++; if (cb.fail) cb.fail();
+            });
+          };
+          tryPlay();
+        } catch (e) { tok++; if (cb.fail) cb.fail(); }
+      };
+      // the first line usually arrives during the first tap's muted unlock: changing the element's source while that
+      // play() is still pending cancelled this clip silently (screen 1 then fell back to the device voice), so wait for it
+      if (unlocking) unlocking.then(go, go); else go();
       return true;
     },
     // where the clip is now (s), for the line's timers; -1 when nothing is playing
@@ -62,18 +79,23 @@
       el.onplaying = el.onended = el.onerror = null;
       try { el.pause(); } catch (e) {}
     },
-    // after Start: fetch every clip quietly, one at a time, so each is ready when its line comes
+    // after Start: fetch every clip quietly, one at a time, so each is ready when its line comes.
+    // One reused element, released at the end: a new Audio() per clip left ~120 media players alive until garbage
+    // collection, and past the browser's player limit it suspends players - the voice-over element then stalled
+    // without ever starting, and lines fell back to the device voice at random.
     prefetch() {
       if (!VO.on || VO.prefetching) return;
       VO.prefetching = true;
-      const ids = Object.keys(lines).map((k) => lines[k][0]);
+      const ids = Object.keys(lines).map((k) => lines[k][0]).filter((id, i, a) => a.indexOf(id) === i);
+      let a; try { a = new Audio(); } catch (e) { return; }
+      a.preload = 'auto'; a.muted = true;
+      const release = () => { a.oncanplaythrough = a.onerror = null; a.removeAttribute('src'); try { a.load(); } catch (e) {} };
       const next = (i) => {
-        if (i >= ids.length) return;
-        let a; try { a = new Audio(); } catch (e) { return; }
-        a.preload = 'auto'; a.muted = true;
+        if (i >= ids.length) { release(); return; }
         let gone = false;
-        const go = () => { if (gone) return; gone = true; a.removeAttribute('src'); setTimeout(() => next(i + 1), 30); };
-        a.oncanplaythrough = go; a.onerror = go; setTimeout(go, 8000);
+        const go = () => { if (gone) return; gone = true; clearTimeout(cap); setTimeout(() => next(i + 1), 30); };
+        const cap = setTimeout(go, 8000);
+        a.oncanplaythrough = go; a.onerror = go;
         a.src = src(ids[i]); try { a.load(); } catch (e) { go(); }
       };
       next(0);

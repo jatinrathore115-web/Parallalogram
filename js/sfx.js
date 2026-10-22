@@ -40,6 +40,14 @@
     g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.012));
     src.connect(f); f.connect(g); g.connect(ctx.destination); src.start(t); src.stop(t + 0.05);
   };
+  // a soft band of noise sweeping from f0 to f1 Hz over dur s (water, air: the bubble rising, Swiftee's whoosh)
+  const sweep = (ctx, t, dur, f0, f1, peak) => {
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = noiseBuf(ctx); src.loop = true; f.type = 'bandpass'; f.Q.value = 1.4;
+    f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + dur * 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(ctx.destination); src.start(t); src.stop(t + dur + 0.05);
+  };
   const KINDS = {
     pop: (ctx, t, f, v) => {
       tone(ctx, t, { f0: f * 2.1, f1: f, glide: 0.045, peak: 0.16 * v, a: 0.003, d: 0.13 });
@@ -68,6 +76,9 @@
       });
     },
     tap: (ctx, t, f, v) => { tone(ctx, t, { f0: f * 1.4, f1: f, glide: 0.03, peak: 0.07 * v, a: 0.002, d: 0.06 }); click(ctx, t, 0.025 * v, 3000, 0.006); },
+    // the Lanternfish Parade: soft entry bubbles, a trail shimmer, and a warm panel chime
+    bubbles: (ctx, t, f, v) => { [0, 0.11, 0.19, 0.3].forEach((dt, i) => tone(ctx, t + dt, { f0: f * (1 + i * 0.18), f1: f * (1.5 + i * 0.2), glide: 0.05, peak: 0.05 * v, a: 0.003, d: 0.07 })); },
+    whoosh: (ctx, t, f, v) => sweep(ctx, t, 0.75, 500, 3000, 0.06 * v),
     snap: (ctx, t, f, v) => {
       tone(ctx, t, { f0: f, f1: f * 1.15, glide: 0.03, peak: 0.1 * v, a: 0.002, d: 0.08 });
       tone(ctx, t + 0.06, { f0: f * 1.5, f1: f * 1.7, glide: 0.03, peak: 0.1 * v, a: 0.002, d: 0.12 });
@@ -75,7 +86,7 @@
     }
   };
   // each effect's natural pitch (Hz) when none is given
-  const BASE = { pop: 640, tick: 1400, pluck: 660, glint: 1200, chime: 1046.5, shimmer: 1046.5, tap: 700, snap: 990 };
+  const BASE = { bubbles: 700, whoosh: 1000, pop: 640, tick: 1400, pluck: 660, glint: 1200, chime: 1046.5, shimmer: 1046.5, tap: 700, snap: 990 };
   window.Sfx = {
     // a rising major arpeggio (C5 E5 G5 C6 E6) for sequences: notes[i]
     notes: [523.25, 659.25, 783.99, 1046.5, 1318.5],

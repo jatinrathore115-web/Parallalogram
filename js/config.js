@@ -11,7 +11,9 @@ const CONFIG = {
   // (notation panels') face. vA..vD = each corner's own colour (its angle arc, its half of a diagonal), kept clear of
   // the honey lines; once opposite angles / halves are shown equal, A and C share vA and B and D share vB.
   // Applied on load as CSS variables (--pg-line, --pg-fill, --pg-hl, --pg-ink, --pg-panel, --pg-vA ...) for css/game.css.
-  palette: { line: '#DA7E20', slate: '#2f4566', fill: '#FFD2A0', dot: '#DA7E20', hl: '#FFAF53', hlRing: '#FFAF53', ink: '#1d2f52', panel: '#FFF8EC',
+  // (Fishing Frenzy lesson look: bright blue lines, cream fill, gold highlighter, teal legs once the parallel pair is found)
+  // pair2: the second parallel pair (AD, BC) once both pairs are marked, so the two pairs read apart
+  palette: { pair2: '#7C3AED', line: '#2563EB', slate: '#00C4A7', fill: '#FFF6D6', dot: '#1F6BFF', hl: '#FFD43B', hlRing: '#FFB800', ink: '#123B63', panel: '#FFF8EC',
     vA: '#e11d48', vB: '#7c3aed', vC: '#0284c7', vD: '#059669' },
   // opening shape: the storyboard's symmetric trapezium (pages 1-8): CD 6 cm, both legs 3 cm, base angles 70°, centred in
   // the panel. Dragging B until BC ∥ AD makes the parallelogram of the storyboard: AB = CD = 6 cm, AD = BC = 3 cm,
@@ -19,6 +21,12 @@ const CONFIG = {
   start: { D: 40, C: 400, baseY: 322, height: 180 * Math.sin(70 * Math.PI / 180), legAD: 3, legBC: 3 },
   // keeps the shape readable (angles ~35°–145°); maxTopX = how far right B may go (a parallelogram leans past C)
   limits: { minTop: 90, minBottom: 160, maxLegRun: 243, minX: 16, maxX: 478, maxTopX: 496 },
+  // side markings (board px, scaled with the shape): parallel chevrons - half depth, half width, spacing between two;
+  // equal-length ticks - half length, spacing; gap = how far each kind sits from the midpoint when a side has both
+  marks: { arrowDepth: 6, arrowWing: 7.5, arrowStep: 8, tickHalf: 9.5, tickStep: 7, gap: 18, labelGap: 20 }, // labelGap: a length label's distance from its side
+  // dropdown answers: one option's height, the menu's narrowest width, the lowest it may reach (stage px), close and
+  // wrong-answer display times (ms)
+  dropdown: { itemH: 46, minW: 120, maxBottom: 706, closeMs: 180, wrongMs: 1000 },
   snap: { equalLegsCm: 0.3, rightAngleDeg: 5, parallelPx: 16 },
   // recorded sound effects (others are synthesised): 'good' = every correct action (with the confetti), 'bad' = every wrong one
   sounds: { good: 'assets/audio/correct.mp3', bad: 'assets/audio/incorrect.mp3' },
@@ -58,7 +66,11 @@ const CONFIG = {
   // (answer buttons / tiles under the shape) keep it at 1. The board glides between the two (0.7 s). Visual only: the
   // shape's own geometry and its cm measurements are unchanged.
   // zoomAt: where the zoomed shape's centre sits, in board px (stage = board + 651, 104): the panel's upper middle
-  scene: { boardX: 11, chipTop: 476, chipLeft: 616, zoom: 1.25, zoomAt: [225, 196] },
+  // the composition: shapes sit centre-right (45 px left of the old panel centre), question / checkpoint shapes 15% bigger
+  // (qZoom, about their own centre, nudged up qLift so they keep clear of the answers); the card row and answers follow
+  scene: { boardX: 11, chipTop: 476, chipLeft: 571, zoom: 1.25, zoomAt: [180, 196], shiftX: -45, qZoom: 1.15, qLift: 8,
+    // screen 13's measuring trip: the shape's centre at this stage point, this size, and the glide time before Swiftee sets off
+    measureFocus: { at: [640, 345], zoom: 1.32, settleMs: 850 } },
   // 'top' layout: board scaled and moved so the shape (board centre ~225,242) sits at stage (640,410)
   topLayout: { scale: 1.15, tx: -259, ty: 28 },
   spotlight: { scale: 1.35, tx: -431, ty: -54 },
@@ -67,7 +79,7 @@ const CONFIG = {
   // the middle of the free space between Swiftee (right edge ~350) and the panel's inner edge (~1150), so D clears Swiftee.
   focus: { holdMs: 3000, fadeMs: 350, moveMs: 700, handMs: 5000, scale: 1.25, tx: -215, ty: -46 },
   // screen 13 measuring trip: walker size on the shape, home feet point/size (matches the scene layout), timings
-  walker: { size: 110, homeX: 199, homeY: 639, homeSize: 259, flyMs: 1100, msPerCm: 380, pauseMs: 550,
+  walker: { size: 110, homeX: 244, homeY: 639, homeSize: 259, flyMs: 1100, msPerCm: 380, pauseMs: 550,
     tips: [[488, 272], [484, 281], [494, 273], [489, 270], [486, 278], [483, 279], [491, 281], [489, 281]] }, // tape exit per walk frame (@2x cell px)
   hand: { idleMs: 8000, showMs: 4400, maxShows: 4, // hand nudge: wait with no touch, time on screen, showings per step
     onceDelayMs: 500, onceMs: 2300 },                 // handOnce screens: a single demo gesture this long after the line ends

@@ -26,9 +26,12 @@
 <!-- Game markup: static layout with {{bindings}} filled from js/game-engine.js renderVals() -->
 <x-dc>
 <div style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #8fd0fb">
+<!-- the page is the lake (1920 x 1080 = the journey world 1672 x 941 at 1.1483): the water (js/water.js), the lake under the card
+     and the Lanternfish Parade and existing lesson card (js/opening.js), then the lesson's stage over the whole page (1280 x 720 at 1.5) on the coral cove scene -->
+<canvas class="water-bg" width="1920" height="1080" aria-hidden="true" style="position: absolute; left: 0px; top: 0px; width: 1920px; height: 1080px; pointer-events: none; background: #1a78c8 url(assets/images/water-bg.webp) center / cover no-repeat"></canvas>
+<canvas class="op-scene" width="1920" height="1080" aria-hidden="true" style="position: absolute; left: 0px; top: 0px; width: 1920px; height: 1080px; pointer-events: none"></canvas>
+<canvas class="op-curtain" width="1920" height="1080" aria-hidden="true" style="position: absolute; left: 0px; top: 0px; width: 1920px; height: 1080px; pointer-events: none"></canvas>
 <div class="stage {{sceneCls}}" style="position: absolute; left: 0px; top: 0px; width: 1280px; height: 720px; transform: scale(1.5); transform-origin: 0 0" onPointerDown="{{rootDown}}" onPointerMove="{{rootMove}}" onPointerUp="{{rootUp}}" onPointerCancel="{{rootUp}}">
-<img src="assets/images/winter-background.webp" alt="" style="position: absolute; left: 0px; top: 0px; width: 1280px; height: 720px; object-fit: cover; pointer-events: none">
-<canvas class="snowfall" width="1280" height="720" aria-hidden="true" style="position: absolute; left: 0px; top: 0px; width: 1280px; height: 720px; pointer-events: none"></canvas>
 <img class="panel-img" src="assets/images/ice-panel.webp" alt="" style="position: absolute; left: 108px; top: 78px; width: 1064px; height: 561px; pointer-events: none">
 
 <sc-if value="{{isLesson}}" hint-placeholder-val="{{ true }}">
@@ -122,7 +125,7 @@
 <sc-if value="{{isCfu1}}" hint-placeholder-val="{{ false }}">
 <!-- check 1 picture grid: 2x2 equal cards, the whole group centred in the ice panel (panel centre 876,344);
      each shape is centred in its 200x120 drawing, so it sits in the middle of its card with even padding -->
-<div class="grid4 {{gridCls}}" style="position: absolute; left: 630px; top: 138px; width: 492px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+<div class="grid4 {{gridCls}}" style="position: absolute; left: 585px; top: 138px; width: 492px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
 <button data-qa="opt-A" class="opt gridopt {{c1.A.cls}}" disabled="{{c1.A.dis}}" onClick="{{c1.A.pick}}" aria-label="Shape A" style="position: relative; height: 196px; display: flex; align-items: center; justify-content: center">
 <svg width="200" height="120" viewBox="0 0 200 120" aria-hidden="true"><polygon points="24,96 142,96 176,24 58,24" fill="#e4d6ff" stroke="#7a4fe0" stroke-width="4" stroke-linejoin="round"></polygon><path d="M114,18 L120,24 L114,30 M108,18 L114,24 L108,30 M80,90 L86,96 L80,102 M74,90 L80,96 L74,102" fill="none" stroke="#ec2f84" stroke-width="2.8" stroke-linecap="round"></path><path d="M36,55 L46,61 M154,55 L164,61" stroke="#2f80ed" stroke-width="2.8" stroke-linecap="round"></path></svg>
 </button>
@@ -142,14 +145,14 @@
 
 
 <sc-if value="{{cpOn}}" hint-placeholder-val="{{ false }}">
-<div class="cp-title {{fadeCls}}" style="position: absolute; left: 600px; top: 92px; width: 552px">{{cpTitle}}</div>
+<div class="cp-title {{fadeCls}}" style="position: absolute; left: 555px; top: 92px; width: 552px">{{cpTitle}}</div>
 </sc-if>
 
 <sc-if value="{{fillOn}}" hint-placeholder-val="{{ false }}">
-<div class="{{fillCls}}" style="position: absolute; left: 576px; top: {{optTop}}px; width: 600px">
+<div class="{{fillCls}}" style="position: absolute; left: 531px; top: {{optTop}}px; width: 600px">
 <div class="blank-row">
 <sc-for list="{{blanks}}" as="bk" hint-placeholder-count="2">
-<span class="blank-grp {{bk.gap}}"><span class="blank-pre">{{bk.pre}}</span><button class="{{bk.cls}}" data-blank="{{bk.id}}" data-qa="blank-{{bk.id}}" onClick="{{bk.tap}}" aria-label="Answer box {{bk.pre}}">{{bk.t}}</button><span class="blank-post">{{bk.post}}</span><span class="blank-eq">{{bk.eq}}</span></span>
+<span class="blank-grp {{bk.gap}}"><span class="blank-pre">{{bk.pre}}</span><button class="{{bk.cls}}" data-blank="{{bk.id}}" data-qa="blank-{{bk.id}}" onClick="{{bk.tap}}" aria-label="Answer box {{bk.pre}}" aria-haspopup="listbox" aria-expanded="{{bk.exp}}"><span class="dd-val {{bk.ph}}">{{bk.t}}</span><svg class="dd-chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6 L8 10.5 L12.5 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></button><span class="blank-post">{{bk.post}}</span><span class="blank-eq">{{bk.eq}}</span></span>
 </sc-for>
 </div>
 <div class="tile-row">
@@ -157,6 +160,13 @@
 <button class="{{tl.cls}}" data-qa="tile-{{tl.i}}" onPointerDown="{{tl.down}}" aria-label="{{tl.t}}">{{tl.t}}</button>
 </sc-for>
 </div>
+</div>
+</sc-if>
+<sc-if value="{{menuOn}}" hint-placeholder-val="{{ false }}">
+<div class="{{menu.cls}}" role="listbox" style="left: {{menu.x}}px; top: {{menu.y}}px; width: {{menu.w}}px">
+<sc-for list="{{menuItems}}" as="mi" hint-placeholder-count="3">
+<button class="dd-item" role="option" data-qa="ddopt-{{mi.t}}" onClick="{{mi.pick}}">{{mi.t}}</button>
+</sc-for>
 </div>
 </sc-if>
 <sc-if value="{{ghostOn}}" hint-placeholder-val="{{ false }}">
@@ -273,13 +283,18 @@
 </sc-if>
 
 </div>
+<sc-if value="{{notStarted}}" hint-placeholder-val="{{ false }}">
+<button class="journey-next" data-qa="start" onClick="{{begin}}">Next <span aria-hidden="true">▶</span></button>
+</sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
 var Component = window.TrapeziumGame;
 </script>
 <script src="js/stage-fit.js"></script>
-<script src="js/snowfall.js"></script>
+<script src="js/water-manifest.js"></script>
+<script src="js/water.js"></script>
+<script src="js/opening.js"></script>
 <script src="js/confetti.js"></script>
 </body>
 </html>
