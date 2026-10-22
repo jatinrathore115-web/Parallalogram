@@ -1,86 +1,422 @@
-// Lanternfish Parade transition. Keeps the original lesson card artwork and underwater scene.
-(function(){
-const W=1672,H=941,SCALE=1920/W,TAU=Math.PI*2,CARD={x:836,y:466,w:1604,h:888,radius:60,stroke:4.5}; // the coral cove's rounded frame
-const COVE=new Image();COVE.src='assets/images/coral-cove.webp'; // the scene the lesson plays on (fills the page)
-const reduced=!!(matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
-const ease=t=>1-Math.pow(1-Math.max(0,Math.min(1,t)),3);
-  function cardPrint(ctx) {
-    const w = CARD.w, h = CARD.h, L = -w / 2, R = w / 2, B = h / 2;
-    const ink = 'rgba(43, 123, 214, 0.18)', soft = 'rgba(43, 123, 214, 0.11)', wash = 'rgba(43, 123, 214, 0.07)';
-    const FLOOR = 318, CREST = 190;
+// =====================================================================
+// OPENING — how the session begins, as the Fishing Frenzy journey begins its lesson (reference: parts/fishing-2
+// src/pearl.js, src/game.js, src/sequences.js lessonCard): on the sand of the lake a seashell fades in, rattles twice
+// and swings open on its glowing pearl; the lake dims; the pearl blows a bubble that swells, lets go and rises,
+// growing, while the camera dives under the surface after it; mid-screen it pops and out springs the lesson's card -
+// the coral cove painting (assets/images/coral-cove.webp) - with the gentlest overshoot. The shell and the pearl's
+// light then fade, and the lesson plays on the card.
+//
+// Two canvases at page level, drawn in the journey's world units (1672 x 941; the page is 1920 x 1080):
+//   canvas.op-scene    in the lake, zoomed with the camera's dive: the dim, shadow fish, rising bubbles, the shell,
+//                      the pearl's light and gold motes
+//   canvas.op-curtain  over the lake, in screen space: the pearl's beam, the bubble and the card
+// The lesson's 1280 x 720 stage sits centred on the card at 1:1 (index.html: page 225, 126, scale 1.1483).
+//   Opening.play(sound, done)  the whole opening;  Opening.instant()  straight to the open card
+// The camera's dive moves the water background too (window.Water.dive, js/water.js).
+// =====================================================================
+(function () {
+  const W = 1672, H = 941, SCALE = 1920 / W, TAU = Math.PI * 2;
+  // the card: the coral cove painting at the reference card's width, its own proportions (1672 x 941)
+  const CARD = { x: 836, y: 470, w: 1494, h: 1494 * 941 / 1672 };
+  const PEARL = { x: 836, y: 929, size: 1.12 };
+  const BUBBLE = { radius: 290, seed: 62, blow: 0.3, pop: 0.78 };
+  const DIVE_ZOOM = 1.85, DIM = 0.55, SEABED_Y = 805;
+  const ART = new Image(); ART.src = 'assets/images/coral-cove.webp';
+  const reduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const ease = {
+    inOut: (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
+    out: (t) => 1 - Math.pow(1 - t, 3),
+    outBack: (t) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+  };
+
+  // ---------- the seashell (reference pearl.js) ----------
+  const SHELL = { rim: [0, -30], rx: 74, ry: 15, fan: 82, ribs: 11, spread: 0.36, pearl: [0, -39], pearlR: 23 };
+  const EDGE = '#a4513f';
+  function fanPath(ctx, R) {
+    const a0 = Math.PI + SHELL.spread, step = (Math.PI - 2 * SHELL.spread) / SHELL.ribs;
+    ctx.beginPath(); ctx.moveTo(-15, 4); ctx.lineTo(-19, -5);
+    ctx.lineTo(Math.cos(a0) * R * 0.98, Math.sin(a0) * R * 0.98);
+    for (let i = 0; i < SHELL.ribs; i += 1) {
+      const a = a0 + step * (i + 0.5), b = a0 + step * (i + 1);
+      ctx.quadraticCurveTo(Math.cos(a) * R * 1.07, Math.sin(a) * R * 1.07, Math.cos(b) * R * 0.98, Math.sin(b) * R * 0.98);
+    }
+    ctx.lineTo(19, -5); ctx.lineTo(15, 4); ctx.closePath();
+  }
+  function fanRibs(ctx, R, outside) {
+    const a0 = Math.PI + SHELL.spread, step = (Math.PI - 2 * SHELL.spread) / SHELL.ribs;
+    for (let i = 0; i < SHELL.ribs; i += 1) {
+      const a = a0 + step * (i + 0.5);
+      ctx.beginPath(); ctx.moveTo(0, -2);
+      ctx.lineTo(Math.cos(a - step * 0.5) * R, Math.sin(a - step * 0.5) * R);
+      ctx.lineTo(Math.cos(a - step * 0.08) * R * 1.02, Math.sin(a - step * 0.08) * R * 1.02);
+      ctx.closePath();
+      ctx.fillStyle = outside ? 'rgba(200, 96, 74, 0.22)' : 'rgba(230, 160, 170, 0.14)'; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, -4);
+      ctx.lineTo(Math.cos(a + step * 0.12) * R * 0.97, Math.sin(a + step * 0.12) * R * 0.97);
+      ctx.lineWidth = outside ? 2.2 : 1.6;
+      ctx.strokeStyle = outside ? 'rgba(255, 246, 236, 0.75)' : 'rgba(255, 255, 255, 0.6)'; ctx.stroke();
+    }
+  }
+  function drawLid(ctx, sy) {
+    const R = SHELL.fan, outside = sy < 0;
     ctx.save();
-    ctx.beginPath(); ctx.roundRect(L + 5, -B + 5, w - 10, h - 10, CARD.radius - 4); ctx.clip();
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(L - 10, B + 20); ctx.lineTo(L - 10, FLOOR);
-    ctx.bezierCurveTo(L + 70, FLOOR, L + 90, CREST, L + 215, CREST);
-    ctx.bezierCurveTo(L + 340, CREST, L + 360, FLOOR, L + 440, FLOOR);
-    ctx.bezierCurveTo(L + 680, FLOOR, L + 760, FLOOR + 9, L + 940, FLOOR + 9);
-    ctx.bezierCurveTo(L + 1120, FLOOR + 9, L + 1200, FLOOR, R + 10, FLOOR);
-    ctx.lineTo(R + 10, B + 20); ctx.closePath();
-    ctx.fillStyle = wash; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = ink; ctx.stroke();
-    const kelp = (x, base, height, dir, leaves) => {
-      const p = [[x, base], [x + 24 * dir, base - height * 0.35], [x - 16 * dir, base - height * 0.7], [x + 8 * dir, base - height]];
-      const at = (t) => { const u = 1 - t, k = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t]; return [0, 1].map((i) => k[0] * p[0][i] + k[1] * p[1][i] + k[2] * p[2][i] + k[3] * p[3][i]); };
-      ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); ctx.bezierCurveTo(p[1][0], p[1][1], p[2][0], p[2][1], p[3][0], p[3][1]);
-      ctx.lineWidth = 3.5; ctx.strokeStyle = ink; ctx.stroke();
-      ctx.fillStyle = soft;
-      for (let i = 0; i < leaves; i += 1) {
-        const t = 0.9 - i * 0.2, side = i % 2 ? -dir : dir, a0 = at(t), a1 = at(t + 0.04);
-        const a = Math.atan2(a1[1] - a0[1], a1[0] - a0[0]) + side * 0.8;
-        ctx.beginPath(); ctx.ellipse(a0[0] + Math.cos(a) * 12, a0[1] + Math.sin(a) * 12, 13, 5.5, a, 0, TAU); ctx.fill();
+    ctx.translate(SHELL.rim[0], SHELL.rim[1] - SHELL.ry);
+    ctx.scale(1, Math.abs(sy) < 0.02 ? 0.02 * Math.sign(sy || 1) : sy);
+    fanPath(ctx, R);
+    const g = ctx.createRadialGradient(0, 0, 6, 0, 0, R * 1.05);
+    if (outside) { g.addColorStop(0, '#fff3e3'); g.addColorStop(0.55, '#ffc7a6'); g.addColorStop(1, '#f4977f'); }
+    else { g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#fff1ec'); g.addColorStop(1, '#f6c9cf'); }
+    ctx.fillStyle = g; ctx.fill();
+    ctx.save(); ctx.clip();
+    fanRibs(ctx, R, outside);
+    if (outside) {
+      for (const k of [0.45, 0.68, 0.86]) {
+        ctx.beginPath(); ctx.arc(0, 0, R * k, Math.PI + SHELL.spread, TAU - SHELL.spread);
+        ctx.lineWidth = 1.4 / Math.max(0.2, Math.abs(sy)); ctx.strokeStyle = 'rgba(190, 90, 70, 0.22)'; ctx.stroke();
       }
-    };
-    kelp(L + 40, 299, 150, 1, 4); kelp(L + 70, 271, 84, -1, 3); kelp(R - 40, FLOOR, 160, 1, 4);
-    const trail = (x, y0, n, dir) => {
-      for (let i = 0, y = y0; i < n; i += 1, y -= 52 + i * 8) {
-        const rad = 4 + i * 1.3, bx = x + Math.sin(i * 1.9) * 9 * dir;
-        ctx.beginPath(); ctx.arc(bx, y, rad, 0, TAU); ctx.lineWidth = 2.5; ctx.strokeStyle = ink; ctx.stroke();
-        ctx.beginPath(); ctx.arc(bx - rad * 0.35, y - rad * 0.35, rad * 0.24, 0, TAU); ctx.fillStyle = ink; ctx.fill();
+    } else {
+      const sheen = ctx.createLinearGradient(-R, -R, R, 0);
+      sheen.addColorStop(0, 'rgba(180, 220, 255, 0)'); sheen.addColorStop(0.45, 'rgba(190, 225, 255, 0.28)');
+      sheen.addColorStop(0.6, 'rgba(255, 220, 240, 0.28)'); sheen.addColorStop(1, 'rgba(255, 240, 200, 0)');
+      ctx.fillStyle = sheen; ctx.fillRect(-R * 1.2, -R * 1.2, R * 2.4, R * 1.4);
+    }
+    ctx.restore();
+    fanPath(ctx, R);
+    ctx.restore();
+    ctx.lineWidth = 2.6; ctx.strokeStyle = EDGE; ctx.stroke();
+  }
+  function bowlPath(ctx) {
+    const cx = SHELL.rim[0], cy = SHELL.rim[1], rx = SHELL.rx, ry = SHELL.ry, n = SHELL.ribs + 1;
+    ctx.beginPath(); ctx.moveTo(cx - rx, cy);
+    for (let i = 0; i < n; i += 1) {
+      const t1 = Math.PI - ((i + 0.5) / n) * Math.PI, t2 = Math.PI - ((i + 1) / n) * Math.PI;
+      ctx.quadraticCurveTo(cx + Math.cos(t1) * rx * 0.97, cy + Math.sin(t1) * ry * 0.55, cx + Math.cos(t2) * rx, cy + Math.sin(t2) * ry);
+    }
+    ctx.bezierCurveTo(cx + rx + 2, cy + 18, cx + 40, 4, cx, 4);
+    ctx.bezierCurveTo(cx - 40, 4, cx - rx - 2, cy + 18, cx - rx, cy);
+    ctx.closePath();
+  }
+  function drawBowl(ctx, inside) {
+    const cx = SHELL.rim[0], cy = SHELL.rim[1], rx = SHELL.rx, ry = SHELL.ry;
+    if (inside) {
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, TAU);
+      const g = ctx.createLinearGradient(0, cy - ry, 0, cy + ry);
+      g.addColorStop(0, '#e9a3a3'); g.addColorStop(0.6, '#ffd6d0'); g.addColorStop(1, '#fff1ea');
+      ctx.fillStyle = g; ctx.fill();
+    }
+    bowlPath(ctx);
+    const g = ctx.createLinearGradient(0, cy, 0, 4);
+    g.addColorStop(0, '#ffd5bb'); g.addColorStop(1, '#ee9480');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.save(); ctx.clip();
+    const n = SHELL.ribs + 1;
+    for (let i = 1; i < n; i += 1) {
+      const x = cx - rx + (i / n) * rx * 2;
+      ctx.beginPath(); ctx.moveTo(x, cy + 8); ctx.quadraticCurveTo(x * 0.7, cy + 24, x * 0.35, 8);
+      ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255, 240, 228, 0.6)'; ctx.stroke();
+    }
+    ctx.restore();
+    bowlPath(ctx); ctx.lineWidth = 2.6; ctx.strokeStyle = EDGE; ctx.stroke();
+  }
+  function drawPearl(ctx, size) {
+    const px = SHELL.pearl[0], py = SHELL.pearl[1], r = SHELL.pearlR * size;
+    const g = ctx.createRadialGradient(px - r * 0.35, py - r * 0.4, r * 0.1, px, py, r);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#fff7f0'); g.addColorStop(0.85, '#f1dbe4'); g.addColorStop(1, '#d9c0d3');
+    ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(150, 110, 135, 0.8)'; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(px - r * 0.36, py - r * 0.4, r * 0.26, r * 0.15, -0.6, 0, TAU);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'; ctx.fill();
+  }
+  function drawShell(ctx, x, y, size, s) {
+    const sy = -0.4 + 1.33 * s.open;
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(size, size);
+    ctx.globalAlpha *= s.alpha;
+    ctx.save(); ctx.scale(1, 0.16);
+    const shadow = ctx.createRadialGradient(0, 0, 6, 0, 0, 92);
+    shadow.addColorStop(0, 'rgba(18, 42, 80, 0.32)'); shadow.addColorStop(1, 'rgba(18, 42, 80, 0)');
+    ctx.fillStyle = shadow; ctx.beginPath(); ctx.arc(0, 0, 92, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.rotate(s.rock);
+    ctx.scale(1 + 0.05 * s.squash, 1 - 0.08 * s.squash);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    if (sy > 0) { drawLid(ctx, sy); drawBowl(ctx, true); drawPearl(ctx, s.pearl); drawBowl(ctx, false); }
+    else {
+      drawBowl(ctx, true); drawBowl(ctx, false); drawLid(ctx, sy);
+      if (s.leak > 0) {
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha *= s.leak;
+        ctx.beginPath(); ctx.ellipse(SHELL.rim[0], SHELL.rim[1] + 1, SHELL.rx - 8, SHELL.ry, 0, 0.15, Math.PI - 0.15);
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255, 228, 150, 0.9)'; ctx.stroke();
       }
-    };
-    trail(L + 46, 120, 7, 1); trail(R - 36, 130, 7, -1);
-    const fish = (x, y, dir, k) => {
-      ctx.save(); ctx.translate(x, y); ctx.scale(dir * k, k);
-      ctx.beginPath(); ctx.ellipse(0, 0, 26, 12, 0, 0, TAU); ctx.moveTo(-22, 0); ctx.lineTo(-40, -13); ctx.lineTo(-40, 13); ctx.closePath();
-      ctx.fillStyle = ink; ctx.fill();
-      ctx.beginPath(); ctx.arc(12, -3, 2.8, 0, TAU); ctx.fillStyle = 'rgba(255, 248, 232, 0.95)'; ctx.fill();
-      ctx.restore();
-    };
-    fish(L + 340, -262, 1, 1.25); fish(L + 236, -318, 1, 0.95); fish(L + 222, -222, 1, 0.72); fish(R - 150, -342, -1, 0.9);
+    }
     ctx.restore();
   }
-  // the card (shadow, cream face, dark edge, print) drawn once at full size, in screen pixels
-  let cardImg = null;
-  function cardSprite() {
-    if (cardImg) return cardImg;
-    const pad = 20, c = document.createElement('canvas');
-    c.width = Math.ceil((CARD.w + 2 * pad) * SCALE); c.height = Math.ceil((CARD.h + 2 * pad + 10) * SCALE);
-    const x = c.getContext('2d');
-    x.scale(SCALE, SCALE); x.translate(CARD.w / 2 + pad, CARD.h / 2 + pad);
-    x.lineJoin = 'round'; x.lineCap = 'round';
-    x.beginPath(); x.roundRect(-CARD.w / 2, -CARD.h / 2, CARD.w, CARD.h, CARD.radius);
-    x.fillStyle = 'rgba(0, 20, 60, 0.22)'; x.save(); x.translate(0, 9); x.fill(); x.restore();
-    x.fillStyle = '#fff8e8'; x.fill();
-    x.lineWidth = CARD.stroke; x.strokeStyle = '#3b1d00'; x.stroke();
-    cardPrint(x);
-    cardImg = { c: c, pad: pad };
-    return cardImg;
+  function drawPearlLight(ctx, x, y, size, k, t) {
+    if (k <= 0) return;
+    const px = x + SHELL.pearl[0] * size, py = y + SHELL.pearl[1] * size;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.save(); ctx.translate(x, y + 2); ctx.scale(1, 0.18);
+    const sand = ctx.createRadialGradient(0, 0, 10, 0, 0, 190);
+    sand.addColorStop(0, 'rgba(255, 220, 170, ' + 0.3 * k + ')'); sand.addColorStop(1, 'rgba(255, 228, 180, 0)');
+    ctx.fillStyle = sand; ctx.fillRect(-190, -190, 380, 380);
+    ctx.restore();
+    for (let i = 0; i < 5; i += 1) {
+      const a = -Math.PI / 2 + (i - 2) * 0.42 + (reduced ? 0 : Math.sin(t * 0.6 + i * 1.7) * 0.06);
+      const len = (150 + 40 * Math.sin(t * 0.9 + i)) * k;
+      const ray = ctx.createLinearGradient(px, py, px + Math.cos(a) * len, py + Math.sin(a) * len);
+      ray.addColorStop(0, 'rgba(255, 232, 180, ' + 0.16 * k + ')'); ray.addColorStop(1, 'rgba(255, 240, 200, 0)');
+      ctx.beginPath(); ctx.moveTo(px, py);
+      ctx.lineTo(px + Math.cos(a - 0.07) * len, py + Math.sin(a - 0.07) * len);
+      ctx.lineTo(px + Math.cos(a + 0.07) * len, py + Math.sin(a + 0.07) * len);
+      ctx.closePath(); ctx.fillStyle = ray; ctx.fill();
+    }
+    const halo = ctx.createRadialGradient(px, py, size * 20, px, py, 46 + 74 * k);
+    halo.addColorStop(0, 'rgba(255, 236, 190, ' + 0.3 * k + ')'); halo.addColorStop(0.4, 'rgba(255, 214, 150, ' + 0.18 * k + ')');
+    halo.addColorStop(1, 'rgba(255, 222, 160, 0)');
+    ctx.fillStyle = halo; ctx.fillRect(px - 130, py - 130, 260, 260);
+    ctx.restore();
+  }
+  // ---------- the bubble (reference game.js drawBubble) ----------
+  function drawBubble(ctx, x, y, r, t, still, k) {
+    if (r <= 0 || (k != null && k <= 0)) return;
+    ctx.save();
+    ctx.globalAlpha *= k == null ? 1 : k;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
+    const body = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
+    body.addColorStop(0, 'rgba(255, 255, 255, 0.04)'); body.addColorStop(0.8, 'rgba(200, 235, 255, 0.03)');
+    body.addColorStop(1, 'rgba(210, 240, 255, 0.22)');
+    ctx.fillStyle = body; ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    const turn = still ? 0 : t * 0.8;
+    const rim = ctx.createLinearGradient(x + Math.cos(turn) * r, y + Math.sin(turn) * r, x - Math.cos(turn) * r, y - Math.sin(turn) * r);
+    rim.addColorStop(0, 'rgba(140, 230, 255, 0.75)'); rim.addColorStop(0.35, 'rgba(255, 190, 240, 0.7)');
+    rim.addColorStop(0.65, 'rgba(255, 236, 150, 0.7)'); rim.addColorStop(1, 'rgba(150, 255, 215, 0.75)');
+    ctx.lineWidth = Math.max(1.5, r * 0.035); ctx.strokeStyle = rim; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, r * 0.8, Math.PI * 1.08, Math.PI * 1.42);
+    ctx.lineWidth = Math.max(1.5, r * 0.06); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + r * 0.42, y + r * 0.44, Math.max(1, r * 0.06), 0, TAU);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; ctx.fill();
+    ctx.restore();
   }
 
-let sprite=null,scene=null,curtain=null,raf=0,active=false,doneOnce=false,startAt=0,complete=null,soundTimers=[];
-const ctxs=()=>{if(!scene||!scene.isConnected)scene=document.querySelector('.op-scene');if(!curtain||!curtain.isConnected)curtain=document.querySelector('.op-curtain');return [scene&&scene.getContext('2d'),curtain&&curtain.getContext('2d')];};
-function cardSprite(){return COVE.complete&&COVE.naturalWidth?{c:COVE}:null;}
-function oldCardSprite(){if(sprite)return sprite;const pad=20,c=document.createElement('canvas');c.width=Math.ceil((CARD.w+pad*2)*SCALE);c.height=Math.ceil((CARD.h+pad*2+10)*SCALE);const x=c.getContext('2d');x.scale(SCALE,SCALE);x.translate(CARD.w/2+pad,CARD.h/2+pad);x.lineJoin='round';x.lineCap='round';x.beginPath();x.roundRect(-CARD.w/2,-CARD.h/2,CARD.w,CARD.h,CARD.radius);x.fillStyle='rgba(0,20,60,.22)';x.save();x.translate(0,9);x.fill();x.restore();x.fillStyle='#fff8e8';x.fill();x.lineWidth=CARD.stroke;x.strokeStyle='#3b1d00';x.stroke();cardPrint(x);return sprite={c,pad};}
-const fish=Array.from({length:10},(_,i)=>({i,h:['#73f4ff','#75ffe0','#b5fff1','#ffe7a3'][i%4],s:.8+(i%4)*.1,p:i*.61}));
-const dust=Array.from({length:24},(_,i)=>({x:i*239%W,y:i*173%H,r:1.2+i%3*.55,p:i*1.7}));
-function point(u){const x0=CARD.x-CARD.w/2+34,x1=CARD.x+CARD.w/2-34,y0=CARD.y-CARD.h/2+34,y1=CARD.y+CARD.h/2-34,r=46,sw=x1-x0-2*r,sh=y1-y0-2*r,arc=Math.PI*r/2,total=2*sw+2*sh+4*arc;let d=((u%1)+1)%1*total;if(d<sw)return[x0+r+d,y0];d-=sw;if(d<arc){let a=-Math.PI/2+d/r;return[x1-r+Math.cos(a)*r,y0+r+Math.sin(a)*r];}d-=arc;if(d<sh)return[x1,y0+r+d];d-=sh;if(d<arc){let a=d/r;return[x1-r+Math.cos(a)*r,y1-r+Math.sin(a)*r];}d-=arc;if(d<sw)return[x1-r-d,y1];d-=sw;if(d<arc){let a=Math.PI/2+d/r;return[x0+r+Math.cos(a)*r,y1-r+Math.sin(a)*r];}d-=arc;if(d<sh)return[x0,y1-r-d];d-=sh;let a=Math.PI+d/r;return[x0+r+Math.cos(a)*r,y0+r+Math.sin(a)*r];}
-function drawFish(c,f,x,y,a,alpha,t){c.save();c.translate(x,y+Math.sin(t*3+f.p)*3);c.rotate(a);c.scale(f.s,f.s);c.globalAlpha=alpha;c.shadowColor=f.h;c.shadowBlur=16;c.fillStyle=f.h;let wag=Math.sin(t*12+f.p)*4;c.beginPath();c.moveTo(-14,0);c.lineTo(-28,-10+wag);c.lineTo(-26,0);c.lineTo(-28,10+wag);c.closePath();c.fill();let g=c.createRadialGradient(2,-3,1,0,0,19);g.addColorStop(0,'#fff');g.addColorStop(.3,f.h);g.addColorStop(1,'rgba(40,180,210,.35)');c.fillStyle=g;c.beginPath();c.ellipse(0,0,18,10,0,0,TAU);c.fill();c.shadowBlur=0;c.fillStyle='#123b50';c.beginPath();c.arc(10,-2,1.7,0,TAU);c.fill();c.restore();}
-function draw(now){if(!active)return;const [a,b]=ctxs();if(!a||!b)return;const duration=reduced?1.1:5.2,sec=Math.min(duration,(now-startAt)/1000)*(5.2/duration),t=sec/5.2;a.setTransform(1,0,0,1,0,0);a.clearRect(0,0,scene.width,scene.height);a.setTransform(SCALE,0,0,SCALE,0,0);b.setTransform(1,0,0,1,0,0);b.clearRect(0,0,curtain.width,curtain.height);b.setTransform(SCALE,0,0,SCALE,0,0);
-const dim=ease(sec/.6)*(1-ease((sec-4.2)/.8));a.fillStyle='rgba(5,24,54,'+(.24*dim)+')';a.fillRect(0,0,W,H);a.save();a.globalCompositeOperation='screen';for(let i=0;i<3;i++){let x=230+i*590+Math.sin(sec*.45+i)*28,g=a.createLinearGradient(x,0,x+170,H*.8);g.addColorStop(0,'rgba(145,235,255,'+(.06*dim)+')');g.addColorStop(1,'rgba(145,235,255,0)');a.fillStyle=g;a.beginPath();a.moveTo(x-35,0);a.lineTo(x+35,0);a.lineTo(x+200,H*.8);a.lineTo(x+55,H*.8);a.fill();}dust.forEach(p=>{a.globalAlpha=(.14+.12*Math.sin(sec+p.p))*dim;a.fillStyle='#c8faff';a.beginPath();a.arc(p.x+Math.sin(sec+p.p)*5,(p.y-sec*14+H)%H,p.r,0,TAU);a.fill();});a.restore();
-const enter=ease((sec-.6)/1.2),leave=ease((sec-4)/.8);fish.forEach((f,i)=>{const q=point((i+.5)/fish.length),side=i%4,ox=side===0?-230:side===1?210:side===2?150:-190,oy=side===0?-180:side===1?-70:side===2?160:100,u=ease((sec-.55-i*.035)/1.1);let x,y;if(sec<1.8){const t0=1-u,cx=(W-q[0])*.5+q[0]-.35*ox,cy=(H-q[1])*.5+q[1]-.35*oy;x=t0*t0*(q[0]+ox*2.5)+2*t0*u*cx+u*u*q[0];y=t0*t0*(q[1]+oy*2.5)+2*t0*u*cy+u*u*q[1];}else{x=q[0]+ox*2.4*leave;y=q[1]+oy*2.4*leave;}const alpha=Math.min(1,enter*(1-leave)*.95);const angle=Math.atan2(oy,ox);a.save();a.globalCompositeOperation='lighter';a.globalAlpha=alpha*.46;a.strokeStyle=f.h;a.lineWidth=2.4;a.shadowColor=f.h;a.shadowBlur=12;a.beginPath();a.moveTo(x-Math.cos(angle)*36,y-Math.sin(angle)*36);a.quadraticCurveTo(x-Math.cos(angle)*16+7,y-Math.sin(angle)*16-8,x,y);a.stroke();a.restore();drawFish(a,f,x,y,angle,alpha,sec);});
-const progress=Math.max(0,Math.min(1,(sec-1.8)/1.2));if(progress){a.save();a.globalCompositeOperation='lighter';a.lineWidth=3.4;a.lineCap='round';a.strokeStyle='rgba(106,250,239,'+(.8*(1-leave))+')';a.shadowColor='#69f7ef';a.shadowBlur=20;const perimeter=2*((CARD.w-68-92)+(CARD.h-68-92))+2*Math.PI*46;a.setLineDash([perimeter*progress,perimeter*2]);a.beginPath();a.roundRect(CARD.x-CARD.w/2+34,CARD.y-CARD.h/2+34,CARD.w-68,CARD.h-68,46);a.stroke();a.setLineDash([]);let pulse=Math.exp(-Math.pow((sec-3.1)/.2,2));a.globalAlpha=pulse*.5;a.lineWidth=20;a.strokeStyle='#d7fff3';a.stroke();a.restore();}
-const panel=ease((sec-3)/1),sp=cardSprite();if(panel&&sp){b.save();b.globalAlpha=panel;b.filter='blur('+((1-panel)*7)+'px)';b.translate(W/2,H/2);b.scale(1.04-.04*panel,1.04-.04*panel);b.drawImage(sp.c,-W/2,-H/2,W,H);b.restore();}
-if(sec>=5.2){active=false;doneOnce=true;soundTimers.forEach(clearTimeout);soundTimers=[];const cb=complete;complete=null;if(cb)cb();return;}raf=requestAnimationFrame(draw);}
-const Opening={get open(){return doneOnce;},instant(){if(raf)cancelAnimationFrame(raf);soundTimers.forEach(clearTimeout);soundTimers=[];raf=0;active=false;doneOnce=true;const [a,b]=ctxs();if(a)a.clearRect(0,0,scene.width,scene.height);if(b){b.setTransform(1,0,0,1,0,0);b.clearRect(0,0,curtain.width,curtain.height);b.setTransform(SCALE,0,0,SCALE,0,0);const put=()=>{const s=cardSprite();if(s)b.drawImage(s.c,0,0,W,H);};if(cardSprite())put();else COVE.addEventListener('load',put,{once:true});}},play(sound,done){if(active||doneOnce){if(done)done();return;}if(reduced){this.instant();if(done)done();return;}active=true;doneOnce=false;startAt=performance.now();complete=done;try{sound&&sound('bubbles');}catch(e){}soundTimers=[setTimeout(()=>{if(active)try{sound&&sound('shimmer');}catch(e){}},1900),setTimeout(()=>{if(active)try{sound&&sound('chime');}catch(e){}},3150)];raf=requestAnimationFrame(draw);},cancel(){if(raf)cancelAnimationFrame(raf);soundTimers.forEach(clearTimeout);soundTimers=[];raf=0;active=false;complete=null;}};window.Opening=Opening;
+  // ---------- state ----------
+  const S = {
+    on: false, t: 0, dive: 0, dim: 0, glow: 0, beam: 0, flash: 0, emerge: 0, open: false, spawning: false,
+    shell: { alpha: 0, open: 0, rock: 0, squash: 0, leak: 0, pearl: 1 }, motes: [], pops: [], fish: [], bubbles: [], bubbleDue: 0
+  };
+  for (let i = 0; i < 6; i++) S.fish.push({ x: Math.random() * W, y: 470 + Math.random() * 280, v: (14 + Math.random() * 16) * (Math.random() < 0.5 ? -1 : 1), k: 0.7 + Math.random() * 0.6, ph: Math.random() * TAU });
+  const zoom = () => (reduced ? (S.dive > 0 ? DIVE_ZOOM : 1) : 1 + (DIVE_ZOOM - 1) * S.dive);
+  const screenOf = (x, y) => { const z = zoom(); return [W / 2 + (x - W / 2) * z, H + (y - H) * z]; };
+  const pearlScreen = () => screenOf(PEARL.x + SHELL.pearl[0] * PEARL.size, PEARL.y + SHELL.pearl[1] * PEARL.size);
+
+  // the bubble and the card by emerge 0..1 (reference recallBubble)
+  function bubbleAt(sx, sy) {
+    const small = (BUBBLE.radius * 1.55) / CARD.w;
+    if (S.emerge <= 0) return { x: sx, y: sy, radius: 0, card: 0 };
+    const blow = Math.min(1, S.emerge / BUBBLE.blow);
+    if (blow < 1) {
+      const radius = 6 + (BUBBLE.seed - 6) * (reduced ? blow : ease.out(blow));
+      const wobble = reduced ? 0 : Math.sin(blow * Math.PI * 4) * 0.06 * (1 - blow);
+      return { x: sx, y: sy - radius * (1 - wobble), radius: radius, card: small * (radius / BUBBLE.radius) * blow };
+    }
+    const rise = Math.min(1, (S.emerge - BUBBLE.blow) / (BUBBLE.pop - BUBBLE.blow));
+    if (rise < 1) {
+      const k = reduced ? rise : ease.inOut(rise), radius = BUBBLE.seed + (BUBBLE.radius - BUBBLE.seed) * k, startY = sy - BUBBLE.seed;
+      return { x: sx + (CARD.x - sx) * k + (reduced ? 0 : Math.sin(rise * Math.PI * 2) * 18 * (1 - k)), y: startY + (CARD.y - startY) * k, radius: radius, card: small * (radius / BUBBLE.radius) };
+    }
+    const spring = Math.min(1, (S.emerge - BUBBLE.pop) / (1 - BUBBLE.pop));
+    const settle = 1 + 1.5 * Math.pow(spring - 1, 3) + 0.5 * Math.pow(spring - 1, 2);
+    return { x: CARD.x, y: CARD.y, radius: 0, card: small + (1 - small) * (reduced ? 1 : settle) };
+  }
+
+  // ---------- drawing ----------
+  let sc = null, cu = null, scx = null, cux = null;
+  function canvases() {
+    if (sc && sc.isConnected && cu && cu.isConnected) return true;
+    sc = document.querySelector('canvas.op-scene'); cu = document.querySelector('canvas.op-curtain');
+    scx = sc && sc.getContext('2d'); cux = cu && cu.getContext('2d');
+    return !!(scx && cux);
+  }
+  function drawScene() {
+    const ctx = scx, z = zoom();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, sc.width, sc.height);
+    if (!S.on) return;
+    ctx.setTransform(SCALE * z, 0, 0, SCALE * z, SCALE * (W / 2) * (1 - z), SCALE * H * (1 - z));
+    S.fish.forEach((f) => {
+      ctx.save(); ctx.translate(f.x, f.y + Math.sin(S.t * 0.7 + f.ph) * 6); ctx.scale(Math.sign(f.v) * f.k, f.k);
+      ctx.beginPath(); ctx.ellipse(0, 0, 30, 11, 0, 0, TAU); ctx.moveTo(-24, 0); ctx.lineTo(-44, -12); ctx.lineTo(-44, 12); ctx.closePath();
+      ctx.fillStyle = 'rgba(10, 52, 120, 0.28)'; ctx.fill(); ctx.restore();
+    });
+    if (S.dim > 0) {
+      ctx.save(); ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+      const dim = ctx.createRadialGradient(CARD.x, CARD.y, 300, CARD.x, CARD.y, 1100);
+      dim.addColorStop(0, 'rgba(4, 14, 40, ' + 0.46 * S.dim + ')'); dim.addColorStop(1, 'rgba(4, 14, 40, ' + 0.62 * S.dim + ')');
+      ctx.fillStyle = dim; ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+    S.bubbles.forEach((b) => {
+      const a = Math.min(1, b.t / 0.4) * Math.max(0, Math.min(1, (b.y - 120) / 160));
+      ctx.beginPath(); ctx.arc(b.x + Math.sin(b.t * 2 + b.ph) * b.sway, b.y, b.r, 0, TAU);
+      ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(225, 248, 255, ' + (0.7 * a).toFixed(3) + ')'; ctx.stroke();
+    });
+    if (S.shell.alpha > 0) {
+      drawShell(ctx, PEARL.x, PEARL.y, PEARL.size, S.shell);
+      drawPearlLight(ctx, PEARL.x, PEARL.y, PEARL.size, S.glow * S.shell.alpha * Math.min(1, S.shell.open * 2), S.t);
+    }
+    if (S.motes.length) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      S.motes.forEach((m) => { const a = Math.sin(Math.min(1, m.life / 1.3) * Math.PI); ctx.fillStyle = 'rgba(255, 214, 120, ' + 0.85 * a + ')'; ctx.beginPath(); ctx.arc(m.x, m.y, 2.6, 0, TAU); ctx.fill(); });
+      ctx.restore();
+    }
+  }
+  function drawBeam(ctx, sx, sy, top) {
+    const half = CARD.w / 2;
+    const wave = (k) => (reduced ? 0 : Math.sin(S.t * 2.2 + k * 9) * 6);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.beginPath(); ctx.moveTo(sx - 6, sy - 4);
+    for (let i = 1; i <= 10; i += 1) { const k = i / 10; ctx.lineTo(sx - 6 + (CARD.x - half - sx + 6) * k + wave(k), sy + (top - sy) * k); }
+    for (let i = 10; i >= 1; i -= 1) { const k = i / 10; ctx.lineTo(sx + 6 + (CARD.x + half - sx - 6) * k - wave(k + 0.5), sy + (top - sy) * k); }
+    ctx.lineTo(sx + 6, sy - 4); ctx.closePath();
+    const cone = ctx.createLinearGradient(0, sy, 0, top);
+    cone.addColorStop(0, 'rgba(255, 238, 200, ' + 0.55 * S.beam + ')'); cone.addColorStop(0.5, 'rgba(255, 210, 235, ' + 0.22 * S.beam + ')');
+    cone.addColorStop(1, 'rgba(170, 235, 255, ' + 0.14 * S.beam + ')');
+    ctx.fillStyle = cone; ctx.fill();
+    const core = ctx.createLinearGradient(0, sy, 0, top);
+    core.addColorStop(0, 'rgba(255, 252, 235, ' + 0.7 * S.beam + ')'); core.addColorStop(1, 'rgba(255, 252, 235, 0)');
+    ctx.beginPath(); ctx.moveTo(sx - 4, sy - 4); ctx.lineTo(CARD.x - half * 0.2, top); ctx.lineTo(CARD.x + half * 0.2, top); ctx.lineTo(sx + 4, sy - 4); ctx.closePath();
+    ctx.fillStyle = core; ctx.fill();
+    ctx.restore();
+  }
+  // the card: the painting with a soft drop shadow (and the arrival's flash)
+  function drawCard(ctx, x, y, k) {
+    if (!(ART.complete && ART.naturalWidth)) return;
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(k, k);
+    // the painting's square corners (outside its rounded frame) are cut away: shadow the frame's shape, then clip to it
+    const ins = CARD.w * 0.016, rr = CARD.w * 0.052, fx = -CARD.w / 2 + ins, fy = -CARD.h / 2 + ins, fw = CARD.w - 2 * ins, fh = CARD.h - 2 * ins;
+    ctx.beginPath(); ctx.roundRect(fx, fy, fw, fh, rr);
+    ctx.shadowColor = 'rgba(0, 20, 60, 0.35)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 10;
+    ctx.fillStyle = '#0d63c9'; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.clip();
+    ctx.drawImage(ART, -CARD.w / 2, -CARD.h / 2, CARD.w, CARD.h);
+    if (S.flash > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.45 * S.flash;
+      ctx.drawImage(ART, -CARD.w / 2, -CARD.h / 2, CARD.w, CARD.h);
+    }
+    ctx.restore();
+  }
+  function drawCurtain() {
+    const ctx = cux;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cu.width, cu.height);
+    if (!S.on) return;
+    ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    const p = pearlScreen(), sx = p[0], sy = p[1];
+    if (S.beam > 0) drawBeam(ctx, sx, sy, CARD.y + CARD.h / 2 - 20);
+    const b = bubbleAt(sx, sy);
+    if (b.card > 0) drawCard(ctx, b.x, b.y, b.card);
+    if (b.radius > 0) drawBubble(ctx, b.x, b.y, b.radius, S.t, reduced);
+    S.pops.forEach((q) => drawBubble(ctx, q.x, q.y, q.r * (1 - 0.3 * q.life), S.t + q.r, true, 1 - q.life));
+  }
+
+  // ---------- the clock ----------
+  let last = 0, running = false, staticDrawn = false;
+  function update(dt) {
+    S.t += dt;
+    if (S.spawning && !reduced && Math.random() < dt * 30) {
+      const p = [PEARL.x + SHELL.pearl[0] * PEARL.size, PEARL.y + SHELL.pearl[1] * PEARL.size];
+      S.motes.push({ x: p[0] + (Math.random() - 0.5) * 30, y: p[1], vx: (Math.random() - 0.5) * 40, vy: -60 - Math.random() * 70, life: 0 });
+    }
+    S.motes.forEach((m) => { m.life += dt; m.x += m.vx * dt; m.y += m.vy * dt; });
+    S.motes = S.motes.filter((m) => m.life < 1.3);
+    S.pops.forEach((q) => { q.life += dt / 0.7; q.x += q.vx * dt; q.y += q.vy * dt; });
+    S.pops = S.pops.filter((q) => q.life < 1);
+    S.fish.forEach((f) => { f.x += f.v * dt; if (f.x < -80) f.x = W + 80; if (f.x > W + 80) f.x = -80; });
+    if (S.open && !reduced) {
+      S.bubbleDue -= dt;
+      while (S.bubbleDue <= 0) {
+        S.bubbleDue += 0.09 + Math.random() * 0.16;
+        const r = 2.5 + Math.random() * 5.5;
+        S.bubbles.push({ x: 400 + Math.random() * 872, y: SEABED_Y + 6 + Math.random() * 30, r: r, vy: 46 + r * 7 + Math.random() * 20, ph: Math.random() * TAU, sway: 6 + Math.random() * 10, t: 0 });
+      }
+    }
+    S.bubbles.forEach((b) => { b.t += dt; b.y -= b.vy * dt; });
+    S.bubbles = S.bubbles.filter((b) => b.y > 100);
+  }
+  function frame(now) {
+    if (!running) return;
+    requestAnimationFrame(frame);
+    const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
+    last = now;
+    if (!canvases() || document.hidden) return;
+    update(dt);
+    if (window.Water && Water.dive) Water.dive(zoom());
+    drawScene();
+    // once the card is up and still, the curtain only needs drawing once
+    if (!(S.open && staticDrawn && !S.pops.length && S.flash <= 0 && S.beam <= 0)) { drawCurtain(); staticDrawn = S.open; }
+  }
+  function run() { if (running) return; running = true; last = 0; requestAnimationFrame(frame); }
+
+  const tween = (ms, f) => new Promise((ok) => {
+    const t0 = performance.now();
+    const step = (now) => { const t = Math.min(1, (now - t0) / ms); f(t); if (t < 1) requestAnimationFrame(step); else ok(); };
+    requestAnimationFrame(step);
+  });
+  const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+  function burst(x, y, r) {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * TAU + Math.random() * 0.3, sp = 120 + Math.random() * 160;
+      S.pops.push({ x: x + Math.cos(a) * r * 0.9, y: y + Math.sin(a) * r * 0.9, r: 5 + Math.random() * 9, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, life: 0 });
+    }
+  }
+  let busy = false;
+  const Opening = {
+    get open() { return S.open; },
+    instant() {
+      S.on = true; S.open = true; staticDrawn = false;
+      Object.assign(S.shell, { alpha: 0, open: 1, rock: 0, squash: 0, leak: 0, pearl: 1 });
+      Object.assign(S, { dim: DIM, emerge: 1, beam: 0, glow: 0, dive: 1, flash: 0 });
+      if (!(ART.complete && ART.naturalWidth)) ART.addEventListener('load', () => { staticDrawn = false; }, { once: true });
+      run();
+    },
+    async play(sound, done) {
+      if (S.on || busy) { if (done) done(); return; }
+      busy = true;
+      const q = reduced, snd = (k) => { try { if (sound) sound(k); } catch (e) {} };
+      S.on = true; run();
+      // the seashell appears on the sand, rattles twice, gathers itself and swings open on its pearl
+      snd('bubbles');
+      await tween(350, (t) => { S.shell.alpha = t; });
+      await wait(250);
+      for (let i = 0; i < 2; i += 1) {
+        snd('rattle');
+        await tween(q ? 220 : 340, (t) => { S.shell.rock = q ? 0 : 0.08 * Math.sin(t * Math.PI * 2) * (i ? -1 : 1); S.shell.leak = 0.35 + 0.3 * (i + t); });
+      }
+      S.shell.rock = 0;
+      await tween(q ? 60 : 150, (t) => { S.shell.squash = Math.sin((t * Math.PI) / 2); });
+      snd('shellOpen');
+      await tween(q ? 350 : 900, (t) => { S.shell.squash = 1 - t; S.shell.open = q ? t : ease.outBack(t); S.shell.leak = 1 - t; S.glow = 0.6 * t; });
+      // the pearl brightens and the lake dims round it
+      snd('shimmer');
+      await tween(q ? 350 : 1000, (t) => { S.shell.pearl = 1 + 0.16 * Math.sin(t * Math.PI); S.glow = 0.6 + 0.4 * t; S.dim = ease.inOut(t) * DIM; });
+      // the pearl blows the card up in a bubble, which pops mid-screen, while the camera dives after it
+      snd('rise');
+      S.spawning = true;
+      let popped = false;
+      await tween(q ? 600 : 2700, (t) => {
+        S.emerge = t; S.beam = Math.min(1, t * 2); S.dive = ease.inOut(Math.min(1, t * 1.25));
+        if (!popped && t >= BUBBLE.pop) { popped = true; burst(CARD.x, CARD.y, BUBBLE.radius); snd('pop'); }
+      });
+      S.spawning = false;
+      snd('land');
+      await tween(800, (t) => { S.flash = 1 - t; S.beam = 1 - 0.65 * t; S.glow = 1 - 0.6 * t; });
+      // the shell and the pearl's light fade; the card stays for the lesson
+      const beam0 = S.beam, glow0 = S.glow;
+      await tween(350, (t) => { S.shell.alpha = 1 - t; S.beam = beam0 * (1 - t); S.glow = glow0 * (1 - t); });
+      S.open = true; busy = false;
+      if (done) done();
+    }
+  };
+  window.Opening = Opening;
 })();

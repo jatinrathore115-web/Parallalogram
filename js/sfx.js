@@ -79,6 +79,11 @@
     // the Lanternfish Parade: soft entry bubbles, a trail shimmer, and a warm panel chime
     bubbles: (ctx, t, f, v) => { [0, 0.11, 0.19, 0.3].forEach((dt, i) => tone(ctx, t + dt, { f0: f * (1 + i * 0.18), f1: f * (1.5 + i * 0.2), glide: 0.05, peak: 0.05 * v, a: 0.003, d: 0.07 })); },
     whoosh: (ctx, t, f, v) => sweep(ctx, t, 0.75, 500, 3000, 0.06 * v),
+    // the opening (js/opening.js): the shell's two rattles, its lid swinging open, the bubble rising, the card landing
+    rattle: (ctx, t, f, v) => { [0, 0.07, 0.15].forEach((dt, i) => { tone(ctx, t + dt, { type: 'triangle', f0: f * (1 - i * 0.06), f1: f * 0.7, glide: 0.03, peak: 0.08 * v, a: 0.002, d: 0.06 }); click(ctx, t + dt, 0.04 * v, 1800, 0.01); }); },
+    shellOpen: (ctx, t, f, v) => { tone(ctx, t, { type: 'triangle', f0: f * 0.5, f1: f, glide: 0.35, peak: 0.07 * v, a: 0.02, d: 0.45, lp: f * 4 }); tone(ctx, t + 0.28, { f0: f * 2, peak: 0.04 * v, a: 0.006, d: 0.6 }); },
+    rise: (ctx, t, f, v) => { sweep(ctx, t, 2.4, 300, 2400, 0.05 * v); [0.2, 0.7, 1.2, 1.7].forEach((dt, i) => tone(ctx, t + dt, { f0: f * (1 + i * 0.25), f1: f * (1.6 + i * 0.25), glide: 0.06, peak: 0.035 * v, a: 0.003, d: 0.08 })); },
+    land: (ctx, t, f, v) => { tone(ctx, t, { type: 'triangle', f0: f * 0.25, f1: f * 0.18, glide: 0.12, peak: 0.1 * v, a: 0.004, d: 0.25 }); [1, 1.25, 1.5].forEach((m, i) => tone(ctx, t + 0.05 + i * 0.06, { f0: f * m, peak: 0.035 * v, a: 0.006, d: 0.5 })); },
     snap: (ctx, t, f, v) => {
       tone(ctx, t, { f0: f, f1: f * 1.15, glide: 0.03, peak: 0.1 * v, a: 0.002, d: 0.08 });
       tone(ctx, t + 0.06, { f0: f * 1.5, f1: f * 1.7, glide: 0.03, peak: 0.1 * v, a: 0.002, d: 0.12 });
@@ -86,7 +91,7 @@
     }
   };
   // each effect's natural pitch (Hz) when none is given
-  const BASE = { bubbles: 700, whoosh: 1000, pop: 640, tick: 1400, pluck: 660, glint: 1200, chime: 1046.5, shimmer: 1046.5, tap: 700, snap: 990 };
+  const BASE = { rattle: 420, shellOpen: 520, rise: 600, land: 880, bubbles: 700, whoosh: 1000, pop: 640, tick: 1400, pluck: 660, glint: 1200, chime: 1046.5, shimmer: 1046.5, tap: 700, snap: 990 };
   window.Sfx = {
     // a rising major arpeggio (C5 E5 G5 C6 E6) for sequences: notes[i]
     notes: [523.25, 659.25, 783.99, 1046.5, 1318.5],

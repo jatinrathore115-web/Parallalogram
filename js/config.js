@@ -13,7 +13,7 @@ const CONFIG = {
   // Applied on load as CSS variables (--pg-line, --pg-fill, --pg-hl, --pg-ink, --pg-panel, --pg-vA ...) for css/game.css.
   // (Fishing Frenzy lesson look: bright blue lines, cream fill, gold highlighter, teal legs once the parallel pair is found)
   // pair2: the second parallel pair (AD, BC) once both pairs are marked, so the two pairs read apart
-  palette: { pair2: '#7C3AED', line: '#2563EB', slate: '#00C4A7', fill: '#FFF6D6', dot: '#1F6BFF', hl: '#FFD43B', hlRing: '#FFB800', ink: '#123B63', panel: '#FFF8EC',
+  palette: { pair2: '#7C3AED', line: '#1E7BFF', slate: '#00B8A9', fill: '#E4FBFF', dot: '#1E7BFF', hl: '#FFD43B', hlRing: '#FFB800', ink: '#123B63', panel: '#FFF8EC',
     vA: '#e11d48', vB: '#7c3aed', vC: '#0284c7', vD: '#059669' },
   // opening shape: the storyboard's symmetric trapezium (pages 1-8): CD 6 cm, both legs 3 cm, base angles 70°, centred in
   // the panel. Dragging B until BC ∥ AD makes the parallelogram of the storyboard: AB = CD = 6 cm, AD = BC = 3 cm,
@@ -68,6 +68,15 @@ const CONFIG = {
   // zoomAt: where the zoomed shape's centre sits, in board px (stage = board + 651, 104): the panel's upper middle
   // the composition: shapes sit centre-right (45 px left of the old panel centre), question / checkpoint shapes 15% bigger
   // (qZoom, about their own centre, nudged up qLift so they keep clear of the answers); the card row and answers follow
+  // the card (reference fitPlate): the box each screen's shape is fitted into - box: explanation screens (the name
+  // plates go under the shape); boxQ: screens with answers (they go under it); boxQ3: three rows of answers. The
+  // padding round the shape for its letters (board px), the largest scale (the reference's own: its trapezium is 741 px
+  // wide on a 1920 page), extra room for a free drag, and where the plates and answers go (stage px)
+  card: { box: { cx: 640, cy: 332, w: 1160, h: 440 }, boxTop: { cx: 640, cy: 348, w: 1040, h: 276 }, boxMeasure: { cx: 728, cy: 332, w: 940, h: 440 }, rowsRoom: 46, okChipsRoom: 40, boxQ: { cx: 640, cy: 300, w: 1040, h: 340 }, boxQ3: { cx: 640, cy: 270, w: 1000, h: 280 },
+    boxIntro: { cx: 770, cy: 330, w: 760, h: 440 }, // screen 1: right of Swiftee and her bubble
+    padX: 60, padTop: 50, padBottom: 44, maxScale: 1.79, dragRoom: 40,
+    chipMax: 600, chipTopQ: 92, optGap: 26, optMax: 590, optW: 620 },
+  board: { x: 640, y: 104 },
   scene: { boardX: 11, chipTop: 476, chipLeft: 571, zoom: 1.25, zoomAt: [180, 196], shiftX: -45, qZoom: 1.15, qLift: 8,
     // screen 13's measuring trip: the shape's centre at this stage point, this size, and the glide time before Swiftee sets off
     measureFocus: { at: [640, 345], zoom: 1.32, settleMs: 850 } },

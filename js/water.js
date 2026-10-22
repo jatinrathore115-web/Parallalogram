@@ -161,7 +161,6 @@
     var dt = last ? Math.min(0.05, (now - last) / 1000) : 0; // capped: a hidden tab resumes where it left off
     last = now;
     if (!c || !ctx || ready < need) return;
-    if (window.Opening && Opening.open) return; // the coral cove covers the lake once the lesson is up: nothing to draw
     var still = reduced || document.body.classList.contains('thumbs-capture');
     if (still) { if (!staticDone) { scene(false); staticDone = true; } return; }
     staticDone = false;

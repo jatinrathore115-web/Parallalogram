@@ -714,3 +714,67 @@ a{color:#123b63}a:hover{color:#0b2742}
 .stage .fill-ui:not(.match) .blank-row{gap:14px;flex-wrap:nowrap}
 .stage .fill-ui:not(.match) .blank-grp{gap:6px}
 .stage .blank-pre,.stage .blank-post{white-space:nowrap;flex:none}
+
+/* =====================================================================================================================
+   The Fishing Frenzy lesson card (reference css/game.css: plate screens, name tags, shape colours). The lesson's stage
+   sits on the card (index.html: page 225, 126 at 1.1483), the lake and the shell round it (js/opening.js).
+   ===================================================================================================================== */
+/* the stage is the card's middle: transparent, so the card's painting shows through */
+.stage.in-card{overflow:visible}
+/* Swiftee on the sand at the card's left on the first screen (and the measuring walk, and the end) */
+.stage.in-card.scene .swiftee,.stage.in-card.scene .swiftee.top{left:40px!important;top:430px!important}
+.stage.in-card.scene .bubble,.stage.in-card.scene .bubble.top{left:57px!important;top:auto!important;bottom:274px!important}
+.stage.in-card.scene .bubble .bubble-tail{left:110px}
+/* ---- caption screens (game-engine isPlate): no Swiftee - she drifts off back and down - and her line is the navy
+   instruction plate across the top: white Fredoka on navy glass with a faint gold rim, key words in gold ---- */
+.stage.in-card.scene.plate .swiftee{opacity:0!important;pointer-events:none;transform:translate(-70px,36px) scale(.9)!important;transition:opacity .45s ease,transform .45s ease!important}
+.stage.in-card.scene.plate .bubble,.stage.in-card.scene.plate .bubble.top,.stage.in-card.scene.plate .bubble.manual{left:0!important;right:0!important;margin:0 auto;top:18px!important;bottom:auto!important;
+  transform-origin:50% 0;min-width:0;max-width:1180px;height:64px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:0 36px;
+  border-radius:22px;background:rgba(8,36,84,.66)!important;border:2.4px solid rgba(255,214,140,.38)!important;
+  box-shadow:0 10px 29px rgba(0,20,60,.3),inset 0 2px 0 rgba(255,255,255,.1)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.stage.in-card.scene.plate .bubble .bubble-tail{display:none}
+.stage.in-card.scene.plate .bubble-text{width:100%;flex-wrap:nowrap;white-space:nowrap;justify-content:center;font-family:'Fredoka','Nunito',system-ui,sans-serif;font-weight:600;
+  letter-spacing:.01em;font-size:23px!important;line-height:1.3;color:#fff8ec;text-shadow:0 1.5px 3.4px rgba(0,0,0,.35)}
+.stage.in-card.scene.plate .bubble-text .w.brk{display:none}
+.stage.in-card.scene.plate .w.cur{color:#fff8ec}
+.stage.in-card.scene.plate .w.key,.stage.in-card.scene.plate .w.cur.key{color:#ffd166;font-weight:700}
+.stage.in-card .bubble:not(:has(.w.on,.w.cur)){opacity:0}
+/* the checkpoint's heading: a small gold tag under the plate */
+.stage.in-card .cp-title{top:92px!important;font-size:17px;padding:4px 14px 3px;width:auto!important;left:0!important;right:0;margin:0 auto;max-width:460px;
+  background:linear-gradient(180deg,#ffd166,#ffb52e);color:#5a3a00;box-shadow:0 3px 0 #d98e12,0 6px 12px rgba(0,20,60,.2);border-radius:999px}
+
+/* ---- the shape: bright blue lines, an ice-white fill with a soft drop shadow (teal legs come from the palette) ---- */
+.stage.in-card .shape-fill{fill:#e4fbff!important;fill-opacity:.96;filter:drop-shadow(0 6px 10px rgba(0,60,110,.22))}
+/* parallel arrows: orange chevrons with a white halo, so they read on the line and on the fill */
+.stage.in-card .par-ch,.stage.in-card .par-ch.ch-a,.stage.in-card .par-ch.ch-b{stroke:#ff7a00;stroke-width:4px;paint-order:stroke;filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff)}
+.stage.in-card .ticks{stroke:#123b63;stroke-width:3.5px;filter:drop-shadow(0 0 1.5px #fff)}
+/* lengths, angle sizes and checkpoint values: plain bold text with a white outline (no boxes), each side its own colour */
+.stage.in-card .tag.mtag,.stage.in-card .tag.alab{background:none!important;box-shadow:none!important;padding:0!important;border:0!important;border-radius:0;
+  font-family:'Nunito',system-ui,sans-serif;font-size:22px;font-weight:900;color:#1656e0;
+  text-shadow:0 0 3px #fff,0 0 3px #fff,2px 0 0 #fff,-2px 0 0 #fff,0 2px 0 #fff,0 -2px 0 #fff,1.5px 1.5px 0 #fff,-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff}
+.stage.in-card .tag.mtag.q{color:#00806d}
+.stage.in-card .tag.vlab{color:#123b63;font-size:23px}
+
+/* ---- name tags: navy glass with a gold rim; names in gold, statements in white with their signs in gold ---- */
+.stage.in-card .chip,.stage.in-card .chip.name,.stage.in-card .chip.white,.stage.in-card .chip.gold{
+  color:#fff8ec!important;background:linear-gradient(180deg,rgba(16,58,122,.95),rgba(6,30,74,.97))!important;border:3px solid #ffc94d!important;
+  box-shadow:0 8px 20px rgba(0,20,60,.35),inset 0 1px 0 rgba(255,255,255,.16)!important;text-shadow:0 2px 3px rgba(0,0,0,.3);font-family:'Fredoka','Baloo 2',system-ui,sans-serif}
+.stage.in-card .chip.name{color:#ffd166!important;font-size:32px;padding:8px 38px 6px}
+.stage.in-card .chip .chip-cap{color:#a9c8f2!important}
+.stage.in-card .chip .op,.stage.in-card .chip-ln .op{color:#ffd166!important}
+.stage.in-card .chip.hi{border-color:#fff3b0!important;box-shadow:0 0 0 4px rgba(255,209,102,.4),0 8px 20px rgba(0,20,60,.35)!important}
+/* the plate fits between the screen counter (ends ~x 235) and Back / Next (from ~x 974): long lines wrap onto two */
+.stage.in-card.scene.plate .bubble,.stage.in-card.scene.plate .bubble.top,.stage.in-card.scene.plate .bubble.manual{left:252px!important;right:318px!important;margin:0;max-width:none;width:auto;
+  top:10px!important;height:auto;min-height:54px;padding:7px 26px}
+.stage.in-card.scene.plate .bubble-text{white-space:normal;flex-wrap:wrap;text-wrap:balance;font-size:21px!important;line-height:1.28}
+/* the bubble's tail: symmetric, its white fill covers the bubble's 3 px border where they meet and its two teal edges
+   run straight out of that border (the svg's top is the border's inner edge: top 100% of the padding box) */
+.stage .bubble-tail{overflow:visible!important;margin-top:0!important;filter:drop-shadow(0 3px 3px rgba(18,59,99,.12))}
+.stage .bubble-tail .tail-fill{fill:#fff!important;stroke:none!important}
+.stage .bubble-tail .tail-edge{fill:none!important;stroke:#2a9a8c!important;stroke-width:3px;stroke-linejoin:round;stroke-linecap:round}
+/* drag-and-drop answer boxes (screen 46) are not menus: no dropdown chevron, the value centred in the box */
+.stage .blank:not(.dd) .dd-chev{display:none}
+.stage .blank:not(.dd) .dd-val{margin:0 auto}
+/* once every tile is placed the spent tray fades away instead of leaving greyed ghosts under the answer */
+.stage .tile-row{transition:opacity .4s ease,transform .4s ease}
+.stage .tile-row:not(:has(.tile:not(.used))){opacity:0;transform:translateY(8px);pointer-events:none}
